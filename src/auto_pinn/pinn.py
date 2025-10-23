@@ -32,8 +32,11 @@ class KANLayer(nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         diff = inputs.unsqueeze(1) - self.centers.unsqueeze(0)
-        scaled = torch.exp(-torch.sum(diff * diff, dim=-1) * torch.exp(self.log_scales))
-        expanded = self.mixer(scaled)
+        squared_dist = torch.sum(diff * diff, dim=-1)
+        scale_logits = self.log_scales.clamp(min=-10.0, max=10.0)
+        scales = torch.exp(scale_logits)
+        rbf = torch.exp(-squared_dist * scales).clamp(min=1e-12)
+        expanded = self.mixer(rbf)
         return self.post(expanded)
 
 

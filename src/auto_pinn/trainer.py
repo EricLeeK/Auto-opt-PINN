@@ -66,10 +66,23 @@ class PINNFitnessEvaluator:
 
         collocation = batch.collocation.clone().detach().requires_grad_(True)
         u_pred = model(collocation)
-        grads = torch.autograd.grad(u_pred, collocation, grad_outputs=torch.ones_like(u_pred), create_graph=True)[0]
+        grad_outputs = torch.ones_like(u_pred)
+        grads = torch.autograd.grad(
+            outputs=u_pred,
+            inputs=collocation,
+            grad_outputs=grad_outputs,
+            create_graph=True,
+            retain_graph=True,
+        )[0]
         u_x = grads[:, 0:1]
         u_t = grads[:, 1:2]
-        u_xx = torch.autograd.grad(u_x, collocation, grad_outputs=torch.ones_like(u_x), create_graph=True)[0][:, 0:1]
+        grad_outputs_x = torch.ones_like(u_x)
+        u_xx = torch.autograd.grad(
+            outputs=u_x,
+            inputs=collocation,
+            grad_outputs=grad_outputs_x,
+            create_graph=True,
+        )[0][:, 0:1]
         viscosity = self.config.domain.viscosity
         pde_residual = u_t + u_pred * u_x - viscosity * u_xx
         pde_loss = mse(pde_residual, torch.zeros_like(pde_residual))

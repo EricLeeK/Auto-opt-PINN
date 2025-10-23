@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Sequence, Tuple
+from typing import Tuple
 
 
 @dataclass(frozen=True)
@@ -21,12 +21,12 @@ class SearchSpace:
 
     min_layers: int = 2
     max_layers: int = 5
-    dnn_neurons: Sequence[int] = (16, 32, 64, 128)
-    kan_width: Sequence[int] = (8, 16, 32, 64)
-    kan_grid_points: Sequence[int] = (3, 5, 7)
-    kan_spline_order: Sequence[int] = (2, 3)
-    attn_embed_dim: Sequence[int] = (32, 64)
-    attn_heads: Sequence[int] = (2, 4)
+    dnn_neurons: Tuple[int, ...] = (16, 32, 64, 128)
+    kan_width: Tuple[int, ...] = (8, 16, 32, 64)
+    kan_grid_points: Tuple[int, ...] = (3, 5, 7)
+    kan_spline_order: Tuple[int, ...] = (2, 3)
+    attn_embed_dim: Tuple[int, ...] = (32, 64)
+    attn_heads: Tuple[int, ...] = (2, 4)
 
 
 @dataclass(frozen=True)

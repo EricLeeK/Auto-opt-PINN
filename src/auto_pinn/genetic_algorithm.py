@@ -56,7 +56,7 @@ def crossover(parent_a: Gene, parent_b: Gene) -> Gene:
         return [layer.copy() for layer in parent_a]
     pivot = random.randint(1, limit - 1)
     child: Gene = []
-    child.extend(parent_a[:pivot])
+    child.extend(layer.copy() for layer in parent_a[:pivot])
     child.extend(layer.copy() for layer in parent_b[pivot:])
     return child
 
@@ -64,14 +64,15 @@ def crossover(parent_a: Gene, parent_b: Gene) -> Gene:
 def mutate(gene: Gene, config: ProjectConfig) -> Gene:
     if not gene:
         return create_random_gene(config)
+    candidate = [layer.copy() for layer in gene]
     action = random.choice(["swap_type", "change_param", "add", "delete"])
-    if action == "swap_type" and gene:
-        idx = random.randrange(len(gene))
-        gene[idx] = _random_layer(config)
-        return gene
-    if action == "change_param" and gene:
-        idx = random.randrange(len(gene))
-        layer = gene[idx]
+    if action == "swap_type" and candidate:
+        idx = random.randrange(len(candidate))
+        candidate[idx] = _random_layer(config)
+        return candidate
+    if action == "change_param" and candidate:
+        idx = random.randrange(len(candidate))
+        layer = candidate[idx]
         if layer.layer_type == LayerType.DNN:
             layer.params["units"] = int(random.choice(tuple(config.search.dnn_neurons)))
         elif layer.layer_type == LayerType.KAN:
@@ -89,16 +90,16 @@ def mutate(gene: Gene, config: ProjectConfig) -> Gene:
             while embed % heads != 0:
                 heads = max(1, heads - 1)
             layer.params.update({"embed_dim": embed, "heads": heads})
-        return gene
-    if action == "add" and len(gene) < config.search.max_layers:
-        pos = random.randint(0, len(gene))
-        gene.insert(pos, _random_layer(config))
-        return gene
-    if action == "delete" and len(gene) > config.search.min_layers:
-        idx = random.randrange(len(gene))
-        gene.pop(idx)
-        return gene
-    return gene
+        return candidate
+    if action == "add" and len(candidate) < config.search.max_layers:
+        pos = random.randint(0, len(candidate))
+        candidate.insert(pos, _random_layer(config))
+        return candidate
+    if action == "delete" and len(candidate) > config.search.min_layers:
+        idx = random.randrange(len(candidate))
+        candidate.pop(idx)
+        return candidate
+    return candidate
 
 
 def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tuple[Gene, float]:
