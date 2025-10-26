@@ -130,3 +130,16 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
             new_population.append(child)
         population = new_population
     return best_gene, best_fitness
+
+
+
+# | 阶段 | 代码 | 作用 | 关键点 |
+# |------|------|------|--------|
+# | **初始化** | `initialize_population()` | 创建随机种群 | 多样性 |
+# | **评估** | `evaluator(gene)` | 计算适应度 | 最耗时 |
+# | **记录最优** | `if score > best_fitness` | 全局追踪 | 深拷贝 |
+# | **精英保留** | `sorted(...)[: elite_count]` | 防止退化 | 直接晋级 |
+# | **选择** | `tournament_selection()` | 挑选父代 | 平衡性能与多样性 |
+# | **交叉** | `crossover()` | 组合优势 | 单点交叉 |
+# | **变异** | `mutate()` | 探索新架构 | 4 种操作 |
+# | **更新** | `population = new_population` | 代际更新 | 完全替换 |

@@ -60,3 +60,24 @@ def generate_training_batch(domain: DomainConfig, training: TrainingConfig, devi
         initial_inputs=initial_inputs,
         initial_targets=initial_targets,
     )
+
+
+
+
+# generate_training_batch()  ← 主函数
+#     │
+#     ├─ 配置项读取 (DomainConfig, TrainingConfig)
+#     │
+#     ├─ 三类采样点生成
+#     │   ├─ Collocation Points (PDE 内部点)
+#     │   ├─ Boundary Points (边界条件点)
+#     │   └─ Initial Points (初始条件点)
+#     │
+#     └─ 返回 TrainingBatch (数据容器)
+
+# 要点	说明
+# 核心职责	为 PINN 生成符合 Burgers' 方程的训练数据
+# 三类数据	Collocation（PDE）、Boundary（边界）、Initial（初值）
+# 设计模式	使用 @dataclass 容器封装，类型安全
+# 物理约束	通过采样点强制神经网络学习 PDE、BC、IC
+# 可扩展性	可轻松替换采样策略（LHS、Sobol 序列等）

@@ -16,7 +16,7 @@ class DomainConfig:
 
 
 @dataclass(frozen=True)
-class SearchSpace:
+class SearchSpace:     #基因搜索空间        
     """Search space for layer-wise gene construction."""
 
     min_layers: int = 2
@@ -48,12 +48,12 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 200
+    epochs: int = 2000
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
     initial_weight: float = 1.0
-    device: str = "cpu"
+    device: str = "cuda"  # or "cpu"
 
 
 @dataclass(frozen=True)
@@ -77,3 +77,18 @@ class ProjectConfig:
 
 
 DEFAULT_CONFIG = ProjectConfig()
+
+
+
+
+# DataClass 的四大好处：
+# 1. **类型检查** → 编译时发现错误，而非运行时崩溃
+# 2. **不可变性** → 避免竞态条件和意外修改
+# 3. **分组管理** → 配置清晰，避免参数爆炸
+# 4. **易于测试** → 隔离性好，测试之间不互相污染
+
+# 不使用会导致：
+# - 类型错误难以发现
+# - 并发 bug（竞态条件）
+# - 参数传递混乱
+# - 测试污染和不稳定
