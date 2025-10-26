@@ -107,13 +107,28 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     best_gene: Gene = []
     best_fitness = -math.inf
     for generation in range(config.ga.generations):
+        print(f"[GA] ==== Entering generation {generation + 1}/{config.ga.generations} ==== ")
         fitness_scores: List[float] = []
-        for gene in population:
+        for idx, gene in enumerate(population):
+            print(
+                f"[GA] Generation {generation + 1}/{config.ga.generations} | Evaluating individual {idx + 1}/{len(population)}"
+            )
+            if hasattr(evaluator, "set_run_context"):
+                evaluator.set_run_context(
+                    generation=generation + 1,
+                    total_generations=config.ga.generations,
+                    individual=idx + 1,
+                    population_size=len(population),
+                )
             score = evaluator(gene)
             fitness_scores.append(score)
             if score > best_fitness:
                 best_fitness = score
                 best_gene = [layer.copy() for layer in gene]
+            print(
+                f"[GA] Generation {generation + 1}/{config.ga.generations} | Individual {idx + 1}/{len(population)}"
+                f" | Fitness {score:.6f}"
+            )
         elite_indices = sorted(range(len(population)), key=lambda idx: fitness_scores[idx], reverse=True)[
             : config.ga.elite_count
         ]
@@ -129,6 +144,9 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
                 child = mutate(child, config)
             new_population.append(child)
         population = new_population
+        print(
+            f"[GA] ---- Completed generation {generation + 1}/{config.ga.generations}; best fitness so far {best_fitness:.6f} ----"
+        )
     return best_gene, best_fitness
 
 
