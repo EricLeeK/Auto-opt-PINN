@@ -48,7 +48,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 2000
+    epochs: int = 5
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
@@ -62,7 +62,7 @@ class RuntimeConfig:
 
     seed: int = 42
     dtype: str = "float32"
-    log_every: int = 100
+    log_every: int = 1
 
 
 @dataclass(frozen=True)

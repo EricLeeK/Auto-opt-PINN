@@ -19,8 +19,15 @@ def _random_layer(config: ProjectConfig) -> LayerGene:
         return LayerGene(layer_type=choice, params={"units": int(neurons)})
     if choice == LayerType.KAN:
         width = random.choice(tuple(config.search.kan_width))
-        grid = random.choice(tuple(config.search.kan_grid_points))
-        order = random.choice(tuple(config.search.kan_spline_order))
+        valid_pairs = [
+            (grid, order)
+            for grid in config.search.kan_grid_points
+            for order in config.search.kan_spline_order
+            if grid >= order + 1
+        ]
+        if not valid_pairs:
+            raise ValueError("Search space does not contain any valid (grid_points, spline_order) pairs")
+        grid, order = random.choice(valid_pairs)
         return LayerGene(
             layer_type=choice,
             params={"width": int(width), "grid_points": int(grid), "spline_order": int(order)},
@@ -31,6 +38,16 @@ def _random_layer(config: ProjectConfig) -> LayerGene:
     while embed % heads != 0:
         heads = max(1, heads - 1)
     return LayerGene(layer_type=choice, params={"embed_dim": int(embed), "heads": int(heads)})
+
+
+def _format_gene_structure(gene: Gene) -> str:
+    if not gene:
+        return "  <empty gene>"
+    lines = []
+    for idx, layer in enumerate(gene, start=1):
+        params = ", ".join(f"{key}={value}" for key, value in layer.params.items())
+        lines.append(f"  Layer {idx}: {layer.layer_type.value}({params})")
+    return "\n".join(lines)
 
 
 def create_random_gene(config: ProjectConfig) -> Gene:
@@ -80,9 +97,19 @@ def mutate(gene: Gene, config: ProjectConfig) -> Gene:
             if param == "width":
                 layer.params[param] = int(random.choice(tuple(config.search.kan_width)))
             elif param == "grid_points":
-                layer.params[param] = int(random.choice(tuple(config.search.kan_grid_points)))
+                valid_grids = [
+                    g for g in config.search.kan_grid_points if g >= layer.params["spline_order"] + 1
+                ]
+                if not valid_grids:
+                    valid_grids = [max(layer.params["spline_order"] + 1, min(config.search.kan_grid_points))]
+                layer.params[param] = int(random.choice(tuple(valid_grids)))
             else:
-                layer.params[param] = int(random.choice(tuple(config.search.kan_spline_order)))
+                valid_orders = [
+                    o for o in config.search.kan_spline_order if o + 1 <= layer.params["grid_points"]
+                ]
+                if not valid_orders:
+                    valid_orders = [max(1, layer.params["grid_points"] - 1)]
+                layer.params[param] = int(random.choice(tuple(valid_orders)))
         else:
             embed = int(random.choice(tuple(config.search.attn_embed_dim)))
             heads = int(random.choice(tuple(config.search.attn_heads)))
@@ -120,6 +147,8 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
                     individual=idx + 1,
                     population_size=len(population),
                 )
+            print("[GA] Gene structure:")
+            print(_format_gene_structure(gene))
             score = evaluator(gene)
             fitness_scores.append(score)
             if score > best_fitness:
