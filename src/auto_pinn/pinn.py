@@ -7,37 +7,115 @@ from typing import List, Tuple
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from .gene import Gene, LayerGene, LayerType
 
 
 class KANLayer(nn.Module):
-    """Light-weight kernel adaptive network layer.
+    """Kolmogorov-Arnold Network spline layer.
 
-    The layer maps the input to a set of learnable radial basis activations and then
-    mixes them linearly, producing a non-linear feature expansion reminiscent of the
-    KAN family while staying numerically stable for automatic differentiation.
+    This implementation follows the spirit of KANs by expanding each input feature
+    with a trainable B-spline basis and mixing the resulting coefficients. The layer
+    carries learnable affine normalisation per input dimension, spline coefficients,
+    and a residual linear skip so that the network can emulate both KAN-style basis
+    aggregation and plain linear layers when beneficial.
     """
 
     def __init__(self, in_features: int, width: int, grid_points: int, spline_order: int) -> None:
         super().__init__()
+        if grid_points < 2:
+            raise ValueError("KANLayer requires at least two grid_points")
+        if spline_order < 1:
+            raise ValueError("KANLayer spline_order must be >= 1")
+
         self.in_features = in_features
         self.width = width
-        self.grid_points = grid_points
-        self.spline_order = spline_order
-        self.centers = nn.Parameter(torch.randn(grid_points, in_features))
-        self.log_scales = nn.Parameter(torch.zeros(grid_points))
-        self.mixer = nn.Linear(grid_points, width)
-        self.post = nn.Sequential(nn.LayerNorm(width), nn.Tanh())
+        self.degree = int(spline_order)
+        self.num_ctrl_pts = int(grid_points)
+
+        knot_vector = self._create_knot_vector(self.num_ctrl_pts, self.degree)
+        self.register_buffer("knots", knot_vector, persistent=False)
+
+        # Learnable affine parameters to map inputs into the spline domain (0, 1)
+        self.input_shift = nn.Parameter(torch.zeros(in_features))
+        self.input_log_scale = nn.Parameter(torch.zeros(in_features))
+
+        # Spline coefficient tensor: one set per input dimension.
+        coeff_init = math.sqrt(2.0 / (self.num_ctrl_pts * max(1, in_features)))
+        self.spline_coeffs = nn.Parameter(
+            coeff_init * torch.randn(in_features, self.num_ctrl_pts, width)
+        )
+        self.bias = nn.Parameter(torch.zeros(width))
+
+        # Residual linear skip helps when spline expansion is unnecessary.
+        self.skip_linear = nn.Linear(in_features, width)
+        self.layer_norm = nn.LayerNorm(width)
+        self.activation = nn.GELU()
+
+    @staticmethod
+    def _create_knot_vector(num_ctrl_pts: int, degree: int) -> torch.Tensor:
+        knot_count = num_ctrl_pts + degree + 1
+        knots = torch.zeros(knot_count, dtype=torch.float32)
+        knots[-(degree + 1) :] = 1.0
+        interior = knot_count - 2 * (degree + 1)
+        if interior > 0:
+            interior_points = torch.linspace(0.0, 1.0, interior + 2, dtype=torch.float32)[1:-1]
+            knots[degree + 1 : degree + 1 + interior] = interior_points
+        return knots
+
+    def _bspline_basis(self, x: torch.Tensor) -> torch.Tensor:
+        knots = self.knots.to(dtype=x.dtype, device=x.device)
+        degree = self.degree
+        n_basis = knots.shape[0] - 1
+
+        x = x.unsqueeze(-1)
+        basis_segments = []
+        for i in range(n_basis):
+            left, right = knots[i], knots[i + 1]
+            if i == n_basis - 1:
+                cond = (x >= left) & (x <= right)
+            else:
+                cond = (x >= left) & (x < right)
+            basis_segments.append(cond.to(x.dtype))
+        basis = torch.cat(basis_segments, dim=-1)
+
+        if degree == 0:
+            return basis
+
+        for d in range(1, degree + 1):
+            new_basis = []
+            upper = n_basis - d
+            for i in range(upper):
+                denom1 = knots[i + d] - knots[i]
+                denom2 = knots[i + d + 1] - knots[i + 1]
+                term1 = torch.zeros_like(x)
+                term2 = torch.zeros_like(x)
+                if denom1 > 0:
+                    term1 = ((x - knots[i]) / denom1) * basis[:, i : i + 1]
+                if denom2 > 0:
+                    term2 = ((knots[i + d + 1] - x) / denom2) * basis[:, i + 1 : i + 2]
+                new_basis.append(term1 + term2)
+            basis = torch.cat(new_basis, dim=-1)
+
+        return basis
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        diff = inputs.unsqueeze(1) - self.centers.unsqueeze(0)
-        squared_dist = torch.sum(diff * diff, dim=-1)
-        scale_logits = self.log_scales.clamp(min=-10.0, max=10.0)
-        scales = torch.exp(scale_logits)
-        rbf = torch.exp(-squared_dist * scales).clamp(min=1e-12)
-        expanded = self.mixer(rbf)
-        return self.post(expanded)
+        scale = F.softplus(self.input_log_scale) + 1e-3
+        scaled = (inputs - self.input_shift) * scale
+        normalised = torch.sigmoid(scaled)
+
+        basis_values = []
+        for feat in range(self.in_features):
+            basis_feat = self._bspline_basis(normalised[:, feat])
+            basis_values.append(basis_feat)
+        basis_tensor = torch.stack(basis_values, dim=1)
+
+        spline_mix = torch.einsum("bfg,fgw->bw", basis_tensor, self.spline_coeffs)
+        linear_skip = self.skip_linear(inputs)
+        combined = spline_mix + linear_skip + self.bias
+        combined = self.layer_norm(combined)
+        return self.activation(combined)
 
 
 class AttentionLayer(nn.Module):
