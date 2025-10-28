@@ -6,6 +6,7 @@ import math
 import random
 from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
+import torch
 import torch.multiprocessing as mp
 
 from .config import ProjectConfig
@@ -17,6 +18,15 @@ FitnessEvaluator = Callable[[Gene], float]
 
 def _evaluate_gene_task(payload: Tuple[Gene, ProjectConfig, Dict[str, int]]) -> float:
     gene, config, context = payload
+    target_device = getattr(config.training, "device", "cuda")
+    if isinstance(target_device, str) and target_device.startswith("cuda") and torch.cuda.is_available():
+        device_index = 0
+        if ":" in target_device:
+            try:
+                device_index = int(target_device.split(":", 1)[1])
+            except ValueError:
+                device_index = 0
+        torch.cuda.set_device(device_index)
     evaluator = PINNFitnessEvaluator(config)
     if context:
         evaluator.set_run_context(
