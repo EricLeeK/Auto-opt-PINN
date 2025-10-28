@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 
 class LayerType(str, Enum):
@@ -25,3 +25,15 @@ class LayerGene:
 
 
 Gene = List[LayerGene]
+
+GeneSignature = Tuple[Tuple[str, Tuple[Tuple[str, int], ...]], ...]
+
+
+def gene_signature(gene: Gene) -> GeneSignature:
+    """Hashable signature capturing layer types and sorted integer params."""
+
+    signature_layers = []
+    for layer in gene:
+        sorted_params = tuple(sorted((key, int(value)) for key, value in layer.params.items()))
+        signature_layers.append((layer.layer_type.value, sorted_params))
+    return tuple(signature_layers)

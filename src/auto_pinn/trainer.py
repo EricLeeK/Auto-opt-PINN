@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import random
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import torch
@@ -14,7 +14,7 @@ from torch.optim import Adam
 
 from .config import ProjectConfig
 from .data import TrainingBatch, generate_training_batch
-from .gene import Gene
+from .gene import Gene, GeneSignature, gene_signature
 from .pinn import HybridPINN
 
 
@@ -38,6 +38,7 @@ class PINNFitnessEvaluator:
             "individual": 0,
             "population_size": 0,
         }
+        self._fitness_cache: Dict[GeneSignature, float] = {}
 
     def set_run_context(
         self,
@@ -54,11 +55,21 @@ class PINNFitnessEvaluator:
         }
 
     def __call__(self, gene: Gene) -> float:
+        cache_key: Optional[GeneSignature] = None
+        if self.config.runtime.cache_fitness:
+            cache_key = gene_signature(gene)
+            cached_score = self._fitness_cache.get(cache_key)
+            if cached_score is not None:
+                print("[Evaluator] Using cached fitness for repeated gene")
+                return cached_score
         try:
             result = self._train_gene(gene)
-            return result.fitness
+            fitness = result.fitness
         except Exception:
-            return 0.0
+            fitness = 0.0
+        if cache_key is not None:
+            self._fitness_cache[cache_key] = fitness
+        return fitness
 
     def _train_gene(self, gene: Gene) -> TrainingResult:
         random.seed(self.config.runtime.seed)

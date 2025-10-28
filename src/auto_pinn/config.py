@@ -39,6 +39,7 @@ class GAConfig:
     mutation_rate: float = 0.3
     elite_count: int = 2
     tournament_size: int = 3
+    deduplicate_population: bool = True
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,7 @@ class RuntimeConfig:
     seed: int = 42
     dtype: str = "float32"
     log_every: int = 1
+    cache_fitness: bool = True
 
 
 @dataclass(frozen=True)

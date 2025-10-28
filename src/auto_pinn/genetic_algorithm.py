@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Callable, List, Sequence, Tuple
+from typing import Callable, List, Sequence, Set, Tuple
 
 from .config import ProjectConfig
-from .gene import Gene, LayerGene, LayerType
+from .gene import Gene, GeneSignature, LayerGene, LayerType, gene_signature
 
 FitnessEvaluator = Callable[[Gene], float]
 
@@ -56,7 +56,23 @@ def create_random_gene(config: ProjectConfig) -> Gene:
 
 
 def initialize_population(config: ProjectConfig) -> List[Gene]:
-    return [create_random_gene(config) for _ in range(config.ga.population_size)]
+    population: List[Gene] = []
+    seen_signatures: Set[GeneSignature] = set()
+    max_attempts = config.ga.population_size * 10
+    attempts = 0
+    while len(population) < config.ga.population_size:
+        candidate = create_random_gene(config)
+        if config.ga.deduplicate_population:
+            signature = gene_signature(candidate)
+            if signature in seen_signatures:
+                attempts += 1
+                if attempts < max_attempts:
+                    continue
+            else:
+                seen_signatures.add(signature)
+                attempts = 0
+        population.append(candidate)
+    return population
 
 
 def tournament_selection(population: Sequence[Gene], fitness: Sequence[float], config: ProjectConfig) -> Gene:
@@ -162,15 +178,30 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
             : config.ga.elite_count
         ]
         new_population: List[Gene] = [[layer.copy() for layer in population[idx]] for idx in elite_indices]
+        new_seen: Set[GeneSignature] = set()
+        if config.ga.deduplicate_population:
+            for gene in new_population:
+                new_seen.add(gene_signature(gene))
+
+        max_attempts = config.ga.population_size * 10
         while len(new_population) < config.ga.population_size:
-            parent_a = tournament_selection(population, fitness_scores, config)
-            parent_b = tournament_selection(population, fitness_scores, config)
-            if random.random() < config.ga.crossover_rate:
-                child = crossover(parent_a, parent_b)
-            else:
-                child = parent_a
-            if random.random() < config.ga.mutation_rate:
-                child = mutate(child, config)
+            attempts = 0
+            while True:
+                parent_a = tournament_selection(population, fitness_scores, config)
+                parent_b = tournament_selection(population, fitness_scores, config)
+                if random.random() < config.ga.crossover_rate:
+                    child = crossover(parent_a, parent_b)
+                else:
+                    child = parent_a
+                if random.random() < config.ga.mutation_rate:
+                    child = mutate(child, config)
+                if not config.ga.deduplicate_population:
+                    break
+                signature = gene_signature(child)
+                if signature not in new_seen or attempts >= max_attempts:
+                    new_seen.add(signature)
+                    break
+                attempts += 1
             new_population.append(child)
         population = new_population
         print(
