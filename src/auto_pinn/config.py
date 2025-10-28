@@ -66,6 +66,7 @@ class RuntimeConfig:
     dtype: str = "float32"
     log_every: int = 1
     cache_fitness: bool = True
+    workers: int = 1
 
 
 @dataclass(frozen=True)

@@ -4,12 +4,28 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Callable, List, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+
+import torch.multiprocessing as mp
 
 from .config import ProjectConfig
 from .gene import Gene, GeneSignature, LayerGene, LayerType, gene_signature
+from .trainer import PINNFitnessEvaluator
 
 FitnessEvaluator = Callable[[Gene], float]
+
+
+def _evaluate_gene_task(payload: Tuple[Gene, ProjectConfig, Dict[str, int]]) -> float:
+    gene, config, context = payload
+    evaluator = PINNFitnessEvaluator(config)
+    if context:
+        evaluator.set_run_context(
+            generation=context["generation"],
+            total_generations=context["total_generations"],
+            individual=context["individual"],
+            population_size=context["population_size"],
+        )
+    return evaluator(gene)
 
 
 def _random_layer(config: ProjectConfig) -> LayerGene:
@@ -58,7 +74,7 @@ def create_random_gene(config: ProjectConfig) -> Gene:
 def initialize_population(config: ProjectConfig) -> List[Gene]:
     population: List[Gene] = []
     seen_signatures: Set[GeneSignature] = set()
-    max_attempts = config.ga.population_size * 10
+    max_attempts = config.ga.population_size * 30
     attempts = 0
     while len(population) < config.ga.population_size:
         candidate = create_random_gene(config)
@@ -149,64 +165,128 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     population = initialize_population(config)
     best_gene: Gene = []
     best_fitness = -math.inf
-    for generation in range(config.ga.generations):
-        print(f"[GA] ==== Entering generation {generation + 1}/{config.ga.generations} ==== ")
-        fitness_scores: List[float] = []
-        for idx, gene in enumerate(population):
-            print(
-                f"[GA] Generation {generation + 1}/{config.ga.generations} | Evaluating individual {idx + 1}/{len(population)}"
-            )
-            if hasattr(evaluator, "set_run_context"):
-                evaluator.set_run_context(
-                    generation=generation + 1,
-                    total_generations=config.ga.generations,
-                    individual=idx + 1,
-                    population_size=len(population),
-                )
-            print("[GA] Gene structure:")
-            print(_format_gene_structure(gene))
-            score = evaluator(gene)
-            fitness_scores.append(score)
-            if score > best_fitness:
-                best_fitness = score
-                best_gene = [layer.copy() for layer in gene]
-            print(
-                f"[GA] Generation {generation + 1}/{config.ga.generations} | Individual {idx + 1}/{len(population)}"
-                f" | Fitness {score:.6f}"
-            )
-        elite_indices = sorted(range(len(population)), key=lambda idx: fitness_scores[idx], reverse=True)[
-            : config.ga.elite_count
-        ]
-        new_population: List[Gene] = [[layer.copy() for layer in population[idx]] for idx in elite_indices]
-        new_seen: Set[GeneSignature] = set()
-        if config.ga.deduplicate_population:
-            for gene in new_population:
-                new_seen.add(gene_signature(gene))
+    num_workers = max(1, config.runtime.workers)
+    use_parallel = num_workers > 1
+    supports_cache = all(
+        hasattr(evaluator, attr)
+        for attr in ("cache_key_for", "get_cached_fitness", "store_cached_fitness")
+    )
+    pool: Optional[mp.pool.Pool] = None
+    try:
+        if use_parallel:
+            pool = mp.get_context("spawn").Pool(processes=num_workers)
+        for generation in range(config.ga.generations):
+            print(f"[GA] ==== Entering generation {generation + 1}/{config.ga.generations} ==== ")
+            if use_parallel:
+                fitness_scores: List[float] = [0.0] * len(population)
+                pending_payloads: List[Tuple[Gene, ProjectConfig, Dict[str, int]]] = []
+                pending_meta: List[Tuple[int, Optional[GeneSignature], Dict[str, int]]] = []
+                for idx, gene in enumerate(population):
+                    context = {
+                        "generation": generation + 1,
+                        "total_generations": config.ga.generations,
+                        "individual": idx + 1,
+                        "population_size": len(population),
+                    }
+                    print(
+                        f"[GA] Generation {context['generation']}/{context['total_generations']} | Evaluating individual {context['individual']}/{context['population_size']}"
+                    )
+                    print("[GA] Gene structure:")
+                    print(_format_gene_structure(gene))
+                    cache_key = evaluator.cache_key_for(gene) if supports_cache else None
+                    cached_score = (
+                        evaluator.get_cached_fitness(cache_key) if supports_cache else None
+                    )
+                    if cached_score is not None:
+                        if supports_cache:
+                            print("[Evaluator] Using cached fitness for repeated gene")
+                        fitness_scores[idx] = cached_score
+                        if cached_score > best_fitness:
+                            best_fitness = cached_score
+                            best_gene = [layer.copy() for layer in gene]
+                        print(
+                            f"[GA] Generation {context['generation']}/{context['total_generations']} | Individual {context['individual']}/{context['population_size']}"
+                            f" | Fitness {cached_score:.6f}"
+                        )
+                        continue
+                    payload_gene = [layer.copy() for layer in gene]
+                    context_copy = context.copy()
+                    pending_payloads.append((payload_gene, config, context_copy))
+                    pending_meta.append((idx, cache_key, context_copy))
+                if pending_payloads and pool is not None:
+                    results = pool.map(_evaluate_gene_task, pending_payloads)
+                    for (idx, cache_key, context), score in zip(pending_meta, results):
+                        fitness_scores[idx] = score
+                        if supports_cache:
+                            evaluator.store_cached_fitness(cache_key, score)
+                        if score > best_fitness:
+                            best_fitness = score
+                            best_gene = [layer.copy() for layer in population[idx]]
+                        print(
+                            f"[GA] Generation {context['generation']}/{context['total_generations']} | Individual {context['individual']}/{context['population_size']}"
+                            f" | Fitness {score:.6f}"
+                        )
+            else:
+                fitness_scores = []
+                for idx, gene in enumerate(population):
+                    print(
+                        f"[GA] Generation {generation + 1}/{config.ga.generations} | Evaluating individual {idx + 1}/{len(population)}"
+                    )
+                    if hasattr(evaluator, "set_run_context"):
+                        evaluator.set_run_context(
+                            generation=generation + 1,
+                            total_generations=config.ga.generations,
+                            individual=idx + 1,
+                            population_size=len(population),
+                        )
+                    print("[GA] Gene structure:")
+                    print(_format_gene_structure(gene))
+                    score = evaluator(gene)
+                    fitness_scores.append(score)
+                    if score > best_fitness:
+                        best_fitness = score
+                        best_gene = [layer.copy() for layer in gene]
+                    print(
+                        f"[GA] Generation {generation + 1}/{config.ga.generations} | Individual {idx + 1}/{len(population)}"
+                        f" | Fitness {score:.6f}"
+                    )
+            elite_indices = sorted(range(len(population)), key=lambda idx: fitness_scores[idx], reverse=True)[
+                : config.ga.elite_count
+            ]
+            new_population: List[Gene] = [[layer.copy() for layer in population[idx]] for idx in elite_indices]
+            new_seen: Set[GeneSignature] = set()
+            if config.ga.deduplicate_population:
+                for gene in new_population:
+                    new_seen.add(gene_signature(gene))
 
-        max_attempts = config.ga.population_size * 10
-        while len(new_population) < config.ga.population_size:
-            attempts = 0
-            while True:
-                parent_a = tournament_selection(population, fitness_scores, config)
-                parent_b = tournament_selection(population, fitness_scores, config)
-                if random.random() < config.ga.crossover_rate:
-                    child = crossover(parent_a, parent_b)
-                else:
-                    child = parent_a
-                if random.random() < config.ga.mutation_rate:
-                    child = mutate(child, config)
-                if not config.ga.deduplicate_population:
-                    break
-                signature = gene_signature(child)
-                if signature not in new_seen or attempts >= max_attempts:
-                    new_seen.add(signature)
-                    break
-                attempts += 1
-            new_population.append(child)
-        population = new_population
-        print(
-            f"[GA] ---- Completed generation {generation + 1}/{config.ga.generations}; best fitness so far {best_fitness:.6f} ----"
-        )
+            max_attempts = config.ga.population_size * 10
+            while len(new_population) < config.ga.population_size:
+                attempts = 0
+                while True:
+                    parent_a = tournament_selection(population, fitness_scores, config)
+                    parent_b = tournament_selection(population, fitness_scores, config)
+                    if random.random() < config.ga.crossover_rate:
+                        child = crossover(parent_a, parent_b)
+                    else:
+                        child = parent_a
+                    if random.random() < config.ga.mutation_rate:
+                        child = mutate(child, config)
+                    if not config.ga.deduplicate_population:
+                        break
+                    signature = gene_signature(child)
+                    if signature not in new_seen or attempts >= max_attempts:
+                        new_seen.add(signature)
+                        break
+                    attempts += 1
+                new_population.append(child)
+            population = new_population
+            print(
+                f"[GA] ---- Completed generation {generation + 1}/{config.ga.generations}; best fitness so far {best_fitness:.6f} ----"
+            )
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
     return best_gene, best_fitness
 
 

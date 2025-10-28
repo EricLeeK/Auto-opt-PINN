@@ -40,6 +40,21 @@ class PINNFitnessEvaluator:
         }
         self._fitness_cache: Dict[GeneSignature, float] = {}
 
+    def cache_key_for(self, gene: Gene) -> Optional[GeneSignature]:
+        if not self.config.runtime.cache_fitness:
+            return None
+        return gene_signature(gene)
+
+    def get_cached_fitness(self, key: Optional[GeneSignature]) -> Optional[float]:
+        if key is None:
+            return None
+        return self._fitness_cache.get(key)
+
+    def store_cached_fitness(self, key: Optional[GeneSignature], fitness: float) -> None:
+        if key is None:
+            return
+        self._fitness_cache[key] = fitness
+
     def set_run_context(
         self,
         generation: int,
@@ -55,20 +70,17 @@ class PINNFitnessEvaluator:
         }
 
     def __call__(self, gene: Gene) -> float:
-        cache_key: Optional[GeneSignature] = None
-        if self.config.runtime.cache_fitness:
-            cache_key = gene_signature(gene)
-            cached_score = self._fitness_cache.get(cache_key)
-            if cached_score is not None:
-                print("[Evaluator] Using cached fitness for repeated gene")
-                return cached_score
+        cache_key = self.cache_key_for(gene)
+        cached_score = self.get_cached_fitness(cache_key)
+        if cached_score is not None:
+            print("[Evaluator] Using cached fitness for repeated gene")
+            return cached_score
         try:
             result = self._train_gene(gene)
             fitness = result.fitness
         except Exception:
             fitness = 0.0
-        if cache_key is not None:
-            self._fitness_cache[cache_key] = fitness
+        self.store_cached_fitness(cache_key, fitness)
         return fitness
 
     def _train_gene(self, gene: Gene) -> TrainingResult:
