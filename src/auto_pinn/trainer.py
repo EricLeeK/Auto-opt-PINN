@@ -118,7 +118,6 @@ class PINNFitnessEvaluator:
             inputs=collocation,
             grad_outputs=grad_outputs,
             create_graph=True,
-            retain_graph=True,
         )[0]
         u_x = grads[:, 0:1]
         u_t = grads[:, 1:2]
@@ -133,10 +132,18 @@ class PINNFitnessEvaluator:
         pde_residual = u_t + u_pred * u_x - viscosity * u_xx
         pde_loss = mse(pde_residual, torch.zeros_like(pde_residual))
 
-        boundary_pred = model(batch.boundary_inputs)
+        if self.config.training.data_terms_require_grad:
+            boundary_pred = model(batch.boundary_inputs)
+        else:
+            with torch.no_grad():  # skips parameter gradients for faster but less constrained training
+                boundary_pred = model(batch.boundary_inputs)
         boundary_loss = mse(boundary_pred, batch.boundary_targets)
 
-        initial_pred = model(batch.initial_inputs)
+        if self.config.training.data_terms_require_grad:
+            initial_pred = model(batch.initial_inputs)
+        else:
+            with torch.no_grad():  # same trade-off applied to the initial condition term
+                initial_pred = model(batch.initial_inputs)
         initial_loss = mse(initial_pred, batch.initial_targets)
 
         loss = (

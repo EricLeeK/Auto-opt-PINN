@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Tuple
 
-import numpy as np
 import torch
 
 from .config import DomainConfig, TrainingConfig
@@ -22,36 +21,37 @@ class TrainingBatch:
     initial_targets: torch.Tensor
 
 
-def _burgers_initial_condition(x: np.ndarray) -> np.ndarray:
-    return -np.sin(np.pi * x)
+def _burgers_initial_condition(x: torch.Tensor) -> torch.Tensor:
+    return -torch.sin(torch.pi * x)
 
 
-def _burgers_boundary_condition(t: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    left = np.zeros_like(t)
-    right = np.zeros_like(t)
+def _burgers_boundary_condition(t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    left = torch.zeros_like(t)
+    right = torch.zeros_like(t)
     return left, right
 
 
-def _sample_uniform(count: int, bounds: Tuple[float, float]) -> np.ndarray:
-    return np.random.uniform(bounds[0], bounds[1], size=(count, 1))
+def _sample_uniform(count: int, bounds: Tuple[float, float], device: torch.device, dtype: torch.dtype) -> torch.Tensor:
+    low, high = bounds
+    return low + (high - low) * torch.rand((count, 1), device=device, dtype=dtype)
 
 
 def generate_training_batch(domain: DomainConfig, training: TrainingConfig, device: torch.device, dtype: torch.dtype) -> TrainingBatch:
-    x_coll = _sample_uniform(training.collocation_points, domain.x_bounds)
-    t_coll = _sample_uniform(training.collocation_points, domain.t_bounds)
-    collocation = torch.tensor(np.hstack([x_coll, t_coll]), device=device, dtype=dtype)
+    x_coll = _sample_uniform(training.collocation_points, domain.x_bounds, device, dtype)
+    t_coll = _sample_uniform(training.collocation_points, domain.t_bounds, device, dtype)
+    collocation = torch.cat([x_coll, t_coll], dim=1)
 
-    t_bc = _sample_uniform(training.boundary_points, domain.t_bounds)
+    t_bc = _sample_uniform(training.boundary_points, domain.t_bounds, device, dtype)
     left_vals, right_vals = _burgers_boundary_condition(t_bc)
-    left_inputs = torch.tensor(np.hstack([np.full_like(t_bc, domain.x_bounds[0]), t_bc]), device=device, dtype=dtype)
-    right_inputs = torch.tensor(np.hstack([np.full_like(t_bc, domain.x_bounds[1]), t_bc]), device=device, dtype=dtype)
+    left_inputs = torch.cat([torch.full_like(t_bc, domain.x_bounds[0]), t_bc], dim=1)
+    right_inputs = torch.cat([torch.full_like(t_bc, domain.x_bounds[1]), t_bc], dim=1)
     boundary_inputs = torch.cat([left_inputs, right_inputs], dim=0)
-    boundary_targets = torch.tensor(np.concatenate([left_vals, right_vals], axis=0), device=device, dtype=dtype)
+    boundary_targets = torch.cat([left_vals, right_vals], dim=0)
 
-    x_init = _sample_uniform(training.initial_points, domain.x_bounds)
-    t_init = np.zeros_like(x_init)
-    initial_inputs = torch.tensor(np.hstack([x_init, t_init]), device=device, dtype=dtype)
-    initial_targets = torch.tensor(_burgers_initial_condition(x_init), device=device, dtype=dtype)
+    x_init = _sample_uniform(training.initial_points, domain.x_bounds, device, dtype)
+    t_init = torch.zeros_like(x_init)
+    initial_inputs = torch.cat([x_init, t_init], dim=1)
+    initial_targets = _burgers_initial_condition(x_init)
 
     return TrainingBatch(
         collocation=collocation,
