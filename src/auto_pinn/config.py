@@ -10,7 +10,7 @@ from typing import Tuple
 class DomainConfig:
     """Physical domain and PDE constants."""
 
-    x_bounds: Tuple[float, float] = (0.0, 1.0)
+    x_bounds: Tuple[float, float] = (-1.0, 1.0)
     t_bounds: Tuple[float, float] = (0.0, 1.0)
     viscosity: float = 0.01 / 3.141592653589793
 
@@ -19,13 +19,13 @@ class DomainConfig:
 class SearchSpace:     #基因搜索空间        
     """Search space for layer-wise gene construction."""
 
-    min_layers: int = 2
+    min_layers: int = 3
     max_layers: int = 5
     dnn_neurons: Tuple[int, ...] = (16, 32, 64, 128)
-    kan_width: Tuple[int, ...] = (8, 16, 32, 64)
+    kan_width: Tuple[int, ...] = (8, 16, 24,32)
     kan_grid_points: Tuple[int, ...] = (3, 5, 7)
     kan_spline_order: Tuple[int, ...] = (2, 3)
-    attn_embed_dim: Tuple[int, ...] = (32, 64)
+    attn_embed_dim: Tuple[int, ...] = (32, 48, 64)
     attn_heads: Tuple[int, ...] = (2, 4)
 
 
@@ -49,7 +49,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 5
+    epochs: int = 1000
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
@@ -64,7 +64,7 @@ class RuntimeConfig:
 
     seed: int = 42
     dtype: str = "float32"
-    log_every: int = 1
+    log_every: int = 100
     cache_fitness: bool = True
     workers: int = 1
 
