@@ -110,9 +110,10 @@ class PINNFitnessEvaluator:
                 best_components = (pde_loss, boundary_loss, initial_loss)
             should_log = (epoch + 1) % self.config.runtime.log_every == 0 or epoch == 0
             if should_log:
+                # 同时打印 PDE 损失的科学计数法，避免小数值被四舍五入显示为 0.000000 导致误解
                 print(
                     f"[PINN] Generation {gen}/{total_gen} | Individual {ind}/{pop} | Epoch {epoch + 1}/{self.config.training.epochs}"
-                    f" | Total {final_loss:.6f} | PDE {pde_loss:.6f} | Boundary {boundary_loss:.6f} | Initial {initial_loss:.6f}"
+                    f" | Total {final_loss:.6f} | PDE {pde_loss:.6f} ({pde_loss:.3e}) | Boundary {boundary_loss:.6f} | Initial {initial_loss:.6f}"
                 )
         fitness = 1.0 / (best_loss + 1e-8)
         print(
