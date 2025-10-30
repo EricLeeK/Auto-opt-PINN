@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 import random
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import torch
 import torch.multiprocessing as mp
@@ -16,18 +17,39 @@ from .trainer import PINNFitnessEvaluator
 FitnessEvaluator = Callable[[Gene], float]
 
 
-def _evaluate_gene_task(payload: Tuple[Gene, ProjectConfig, Dict[str, int]]) -> float:
-    gene, config, context = payload
-    target_device = getattr(config.training, "device", "cuda")
-    if isinstance(target_device, str) and target_device.startswith("cuda") and torch.cuda.is_available():
-        device_index = 0
-        if ":" in target_device:
-            try:
-                device_index = int(target_device.split(":", 1)[1])
-            except ValueError:
-                device_index = 0
-        torch.cuda.set_device(device_index)
-    evaluator = PINNFitnessEvaluator(config)
+def _evaluate_gene_task(payload: Tuple[Gene, ProjectConfig, Dict[str, int], Optional[str]]) -> float:
+    gene, config, context, device_override = payload
+
+    target_device: Optional[Union[str, int]]
+    if isinstance(device_override, (str, int)):
+        target_device = device_override
+    elif isinstance(device_override, torch.device):
+        target_device = str(device_override)
+    else:
+        fallback = getattr(config.training, "device", "cuda")
+        if isinstance(fallback, (str, int)):
+            target_device = fallback
+        elif isinstance(fallback, torch.device):
+            target_device = str(fallback)
+        else:
+            target_device = "cuda"
+
+    target_device_str = str(target_device)
+    if target_device_str.startswith("cuda") and torch.cuda.is_available():
+        try:
+            torch.cuda.set_device(target_device)
+        except (AssertionError, ValueError):
+            # Fallback to device index parsing for legacy strings like "cuda:0"
+            device_index = 0
+            if ":" in target_device_str:
+                with_index = target_device_str.split(":", 1)[1]
+                try:
+                    device_index = int(with_index)
+                except ValueError:
+                    device_index = 0
+            torch.cuda.set_device(device_index)
+
+    evaluator = PINNFitnessEvaluator(config, device_override=target_device_str)
     if context:
         evaluator.set_run_context(
             generation=context["generation"],
@@ -36,6 +58,36 @@ def _evaluate_gene_task(payload: Tuple[Gene, ProjectConfig, Dict[str, int]]) -> 
             population_size=context["population_size"],
         )
     return evaluator(gene)
+
+
+def _resolve_device_list(config: ProjectConfig) -> List[str]:
+    configured = list(getattr(config.runtime, "gpu_devices", ()))
+    if not configured:
+        configured = [config.training.device]
+
+    resolved: List[str] = []
+    for dev in configured:
+        if not isinstance(dev, str):
+            continue
+        if dev.startswith("cuda"):
+            if not torch.cuda.is_available():
+                continue
+            if ":" in dev:
+                try:
+                    idx = int(dev.split(":", 1)[1])
+                except ValueError:
+                    continue
+                if 0 <= idx < torch.cuda.device_count():
+                    resolved.append(f"cuda:{idx}")
+            else:
+                # Expand bare "cuda" into all visible devices.
+                resolved.extend([f"cuda:{idx}" for idx in range(torch.cuda.device_count())])
+        else:
+            resolved.append(dev)
+
+    if not resolved:
+        resolved.append("cpu")
+    return resolved
 
 
 def _random_layer(config: ProjectConfig) -> LayerGene:
@@ -175,7 +227,8 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     population = initialize_population(config)
     best_gene: Gene = []
     best_fitness = -math.inf
-    num_workers = max(1, config.runtime.workers)
+    device_list = _resolve_device_list(config)
+    num_workers = max(1, min(config.runtime.workers, len(device_list)))
     use_parallel = num_workers > 1
     supports_cache = all(
         hasattr(evaluator, attr)
@@ -185,12 +238,13 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     try:
         if use_parallel:
             pool = mp.get_context("spawn").Pool(processes=num_workers)
+            device_cycle = itertools.cycle(device_list)
         for generation in range(config.ga.generations):
             print(f"[GA] ==== Entering generation {generation + 1}/{config.ga.generations} ==== ")
             if use_parallel:
                 fitness_scores: List[float] = [0.0] * len(population)
-                pending_payloads: List[Tuple[Gene, ProjectConfig, Dict[str, int]]] = []
-                pending_meta: List[Tuple[int, Optional[GeneSignature], Dict[str, int]]] = []
+                pending_payloads: List[Tuple[Gene, ProjectConfig, Dict[str, int], Optional[str]]] = []
+                pending_meta: List[Tuple[int, Optional[GeneSignature], Dict[str, int], Optional[str]]] = []
                 for idx, gene in enumerate(population):
                     context = {
                         "generation": generation + 1,
@@ -221,20 +275,22 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
                         continue
                     payload_gene = [layer.copy() for layer in gene]
                     context_copy = context.copy()
-                    pending_payloads.append((payload_gene, config, context_copy))
-                    pending_meta.append((idx, cache_key, context_copy))
+                    device_override = next(device_cycle, None) if pool is not None else None
+                    pending_payloads.append((payload_gene, config, context_copy, device_override))
+                    pending_meta.append((idx, cache_key, context_copy, device_override))
                 if pending_payloads and pool is not None:
                     results = pool.map(_evaluate_gene_task, pending_payloads)
-                    for (idx, cache_key, context), score in zip(pending_meta, results):
+                    for (idx, cache_key, context, device_used), score in zip(pending_meta, results):
                         fitness_scores[idx] = score
                         if supports_cache:
                             evaluator.store_cached_fitness(cache_key, score)
                         if score > best_fitness:
                             best_fitness = score
                             best_gene = [layer.copy() for layer in population[idx]]
+                        suffix = f" | Device {device_used}" if device_used else ""
                         print(
                             f"[GA] Generation {context['generation']}/{context['total_generations']} | Individual {context['individual']}/{context['population_size']}"
-                            f" | Fitness {score:.6f}"
+                            f" | Fitness {score:.6f}{suffix}"
                         )
             else:
                 fitness_scores = []

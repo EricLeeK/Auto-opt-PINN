@@ -28,9 +28,12 @@ class TrainingResult:
 class PINNFitnessEvaluator:
     """Callable fitness evaluator for the genetic algorithm."""
 
-    def __init__(self, config: ProjectConfig) -> None:
+    def __init__(self, config: ProjectConfig, device_override: Optional[str] = None) -> None:
         self.config = config
-        self.device = torch.device(config.training.device)
+        device_str = device_override or config.training.device
+        if isinstance(device_str, str) and device_str.startswith("cuda") and not torch.cuda.is_available():
+            device_str = "cpu"
+        self.device = torch.device(device_str)
         self.dtype = torch.float16 if config.runtime.dtype == "float16" else torch.float32
         self._context = {
             "generation": 0,

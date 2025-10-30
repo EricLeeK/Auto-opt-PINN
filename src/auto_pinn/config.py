@@ -69,6 +69,7 @@ class RuntimeConfig:
     workers: int = 1
     checkpoint_dir: str = "checkpoints"
     save_every: int = 500  # Save checkpoint every N epochs
+    gpu_devices: Tuple[str, ...] = ()  # Optional explicit device list for multi-GPU execution
 
 
 @dataclass(frozen=True)
