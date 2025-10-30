@@ -1,0 +1,7 @@
+{
+  "targets": ["dnn"],
+  "skip_reference": true,
+  "epochs": 80000,
+  "evaluate": true,
+  "plot": true
+}
