@@ -33,10 +33,10 @@ class SearchSpace:     #基因搜索空间
 class GAConfig:
     """Hyperparameters controlling the genetic search."""
 
-    population_size: int = 10
+    population_size: int = 8
     generations: int = 5
     crossover_rate: float = 0.8
-    mutation_rate: float = 0.3
+    mutation_rate: float = 0.4
     elite_count: int = 2
     tournament_size: int = 3
     deduplicate_population: bool = True
@@ -70,6 +70,7 @@ class RuntimeConfig:
     checkpoint_dir: str = "checkpoints"
     save_every: int = 500  # Save checkpoint every N epochs
     gpu_devices: Tuple[str, ...] = ("cuda:0", "cuda:1")  # Optional explicit device list for multi-GPU execution
+    gpu_concurrency: int = 1  # How many parallel workers can share a single GPU
 
 
 @dataclass(frozen=True)

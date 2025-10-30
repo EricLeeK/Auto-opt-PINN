@@ -228,7 +228,12 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     best_gene: Gene = []
     best_fitness = -math.inf
     device_list = _resolve_device_list(config)
-    num_workers = max(1, min(config.runtime.workers, len(device_list)))
+    gpu_concurrency = max(1, getattr(config.runtime, "gpu_concurrency", 1))
+    expanded_devices = [device for _ in range(gpu_concurrency) for device in device_list]
+    if not expanded_devices:
+        expanded_devices = device_list
+    capacity = len(expanded_devices) if expanded_devices else 1
+    num_workers = max(1, min(config.runtime.workers, capacity))
     use_parallel = num_workers > 1
     supports_cache = all(
         hasattr(evaluator, attr)
@@ -238,7 +243,8 @@ def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tu
     try:
         if use_parallel:
             pool = mp.get_context("spawn").Pool(processes=num_workers)
-            device_cycle = itertools.cycle(device_list)
+            cycle_source = expanded_devices if expanded_devices else device_list
+            device_cycle = itertools.cycle(cycle_source)
         for generation in range(config.ga.generations):
             print(f"[GA] ==== Entering generation {generation + 1}/{config.ga.generations} ==== ")
             if use_parallel:
