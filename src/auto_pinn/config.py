@@ -49,7 +49,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 1000
+    epochs: int = 500
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
@@ -67,6 +67,8 @@ class RuntimeConfig:
     log_every: int = 100
     cache_fitness: bool = True
     workers: int = 1
+    checkpoint_dir: str = "checkpoints"
+    save_every: int = 500  # Save checkpoint every N epochs
 
 
 @dataclass(frozen=True)

@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--mat",
         type=Path,
-        default=Path("src/burgers_shock.mat"),
+        default=Path("burgers_shock.mat"),
         help="Reference Burgers solution stored as a MATLAB .mat file.",
     )
     parser.add_argument(
@@ -47,6 +47,17 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("best_gene_solution.png"),
         help="Where to save the comparison figure.",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=None,
+        help="Path to load checkpoint for resuming training. If None, uses config.runtime.checkpoint_dir/best_model_checkpoint.pt",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume training from checkpoint if it exists.",
     )
     parser.add_argument(
         "--epochs",
@@ -174,7 +185,7 @@ def train_step(
     )
 
 
-def train_gene(config: ProjectConfig, gene: Gene) -> Tuple[HybridPINN, List[Tuple[float, float, float, float]], float]:
+def train_gene(config: ProjectConfig, gene: Gene, resume_checkpoint: Path | None = None) -> Tuple[HybridPINN, List[Tuple[float, float, float, float]], float, Dict[str, torch.Tensor] | None]:
     set_seeds(config.runtime)
     device = torch.device(config.training.device)
     dtype = torch.float16 if config.runtime.dtype == "float16" else torch.float32
@@ -187,8 +198,26 @@ def train_gene(config: ProjectConfig, gene: Gene) -> Tuple[HybridPINN, List[Tupl
     best_loss = math.inf
     best_components = (math.inf, math.inf, math.inf)
     best_state: Dict[str, torch.Tensor] | None = None
+    start_epoch = 0
 
-    for epoch in range(config.training.epochs):
+    # Resume from checkpoint if provided
+    if resume_checkpoint is not None and resume_checkpoint.exists():
+        print(f"[Runner] Loading checkpoint from {resume_checkpoint}")
+        checkpoint = torch.load(resume_checkpoint, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_loss = checkpoint['best_loss']
+        best_components = checkpoint['best_components']
+        history = checkpoint.get('history', [])
+        if 'best_state' in checkpoint:
+            best_state = checkpoint['best_state']
+        print(f"[Runner] Resumed from epoch {start_epoch}, best loss: {best_loss:.6f}")
+
+    checkpoint_dir = Path(config.runtime.checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+    for epoch in range(start_epoch, config.training.epochs):
         batch = generate_training_batch(config.domain, config.training, device, dtype)
         total, pde, boundary, initial = train_step(
             model,
@@ -204,12 +233,29 @@ def train_gene(config: ProjectConfig, gene: Gene) -> Tuple[HybridPINN, List[Tupl
             best_components = (pde, boundary, initial)
             best_state = {key: value.detach().cpu() for key, value in model.state_dict().items()}
 
-        should_log = (epoch + 1) % config.runtime.log_every == 0 or epoch == 0
+        should_log = (epoch + 1) % config.runtime.log_every == 0 or epoch == start_epoch
         if should_log:
             print(
                 f"[Runner] Epoch {epoch + 1}/{config.training.epochs} | Loss {total:.6f} "
                 f"| PDE {pde:.6f} | Boundary {boundary:.6f} | Initial {initial:.6f}"
             )
+
+        # Save checkpoint periodically
+        should_save = (epoch + 1) % config.runtime.save_every == 0 or epoch == config.training.epochs - 1
+        if should_save:
+            checkpoint_path = checkpoint_dir / f"checkpoint_epoch_{epoch + 1:06d}.pt"
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'best_loss': best_loss,
+                'best_components': best_components,
+                'best_state': best_state,
+                'history': history,
+                'gene': gene,
+                'config': config,
+            }, checkpoint_path)
+            print(f"[Runner] Saved checkpoint at epoch {epoch + 1} to {checkpoint_path}")
 
     if best_state is not None:
         model.load_state_dict(best_state)
@@ -219,7 +265,7 @@ def train_gene(config: ProjectConfig, gene: Gene) -> Tuple[HybridPINN, List[Tupl
         )
     )
     model.eval()
-    return model, history, best_loss
+    return model, history, best_loss, best_state
 
 
 def load_reference_solution(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -303,9 +349,43 @@ def main() -> None:
         params = ", ".join(f"{key}={value}" for key, value in layer.params.items())
         print(f"  Layer {idx}: {layer.layer_type.value}({params})")
 
-    model, history, best_loss = train_gene(config, gene)
+    checkpoint_dir = Path(config.runtime.checkpoint_dir)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+    resume_from = None
+    if args.resume:
+        if args.checkpoint is not None:
+            candidate = Path(args.checkpoint)
+            if candidate.is_dir():
+                checkpoint_files = sorted(candidate.glob("checkpoint_epoch_*.pt"))
+                if checkpoint_files:
+                    resume_from = checkpoint_files[-1]
+            else:
+                resume_from = candidate if candidate.exists() else None
+        else:
+            checkpoint_files = sorted(checkpoint_dir.glob("checkpoint_epoch_*.pt"))
+            if checkpoint_files:
+                resume_from = checkpoint_files[-1]
+
+        if resume_from is None:
+            print("[Runner] Resume requested but no checkpoint found; starting from scratch.")
+
+    model, history, best_loss, best_state = train_gene(config, gene, resume_checkpoint=resume_from)
     fitness = 1.0 / (best_loss + 1e-8)
     print(f"[Runner] Estimated fitness: {fitness:.6f}")
+
+    # Save final best model
+    if best_state is not None:
+        final_model_path = Path(config.runtime.checkpoint_dir) / "best_model_final.pt"
+        final_model_path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({
+            'model_state_dict': best_state,
+            'gene': gene,
+            'best_loss': best_loss,
+            'fitness': fitness,
+            'config': config,
+        }, final_model_path)
+        print(f"[Runner] Saved final best model to {final_model_path}")
 
     x_ref, t_ref, u_ref = load_reference_solution(args.mat)
 

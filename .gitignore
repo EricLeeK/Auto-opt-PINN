@@ -1,3 +1,8 @@
 search_results.json
 *.txt
 *.md
+*.zip
+*.tar.gz
+logs/
+*.pt
+*.png
