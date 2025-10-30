@@ -22,7 +22,7 @@ class SearchSpace:     #基因搜索空间
     min_layers: int = 3
     max_layers: int = 5
     dnn_neurons: Tuple[int, ...] = (16, 32, 64, 128)
-    kan_width: Tuple[int, ...] = (8, 16, 24,32)
+    kan_width: Tuple[int, ...] = (8, 16, 24, 32)
     kan_grid_points: Tuple[int, ...] = (3, 5, 7)
     kan_spline_order: Tuple[int, ...] = (2, 3)
     attn_embed_dim: Tuple[int, ...] = (32, 48, 64)
@@ -49,7 +49,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 500
+    epochs: int = 1000
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
@@ -62,14 +62,14 @@ class TrainingConfig:
 class RuntimeConfig:
     """Global runtime switches."""
 
-    seed: int = 42
+    seed: int = 717
     dtype: str = "float32"
     log_every: int = 100
     cache_fitness: bool = True
-    workers: int = 1
+    workers: int = 2
     checkpoint_dir: str = "checkpoints"
     save_every: int = 500  # Save checkpoint every N epochs
-    gpu_devices: Tuple[str, ...] = ()  # Optional explicit device list for multi-GPU execution
+    gpu_devices: Tuple[str, ...] = ("cuda:0", "cuda:1")  # Optional explicit device list for multi-GPU execution
 
 
 @dataclass(frozen=True)
