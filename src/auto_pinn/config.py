@@ -55,7 +55,7 @@ class TrainingConfig:
     boundary_weight: float = 1.0
     initial_weight: float = 1.0
     device: str = "cuda"  # or "cpu"
-    data_terms_require_grad: bool = False
+    data_terms_require_grad: bool = True
 
 
 @dataclass(frozen=True)
