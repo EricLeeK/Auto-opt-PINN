@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import itertools
+import json
 import math
 import random
-from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
 
 import torch
 import torch.multiprocessing as mp
@@ -133,9 +135,22 @@ def create_random_gene(config: ProjectConfig) -> Gene:
     return [_random_layer(config) for _ in range(layer_count)]
 
 
-def initialize_population(config: ProjectConfig) -> List[Gene]:
+def initialize_population(config: ProjectConfig, seed_genes: Optional[Sequence[Gene]] = None) -> List[Gene]:
     population: List[Gene] = []
     seen_signatures: Set[GeneSignature] = set()
+
+    if seed_genes:
+        for idx, gene in enumerate(seed_genes):
+            if len(population) >= config.ga.population_size:
+                break
+            clone = [layer.copy() for layer in gene]
+            if config.ga.deduplicate_population:
+                signature = gene_signature(clone)
+                if signature in seen_signatures:
+                    continue
+                seen_signatures.add(signature)
+            population.append(clone)
+
     max_attempts = config.ga.population_size * 30
     attempts = 0
     while len(population) < config.ga.population_size:
@@ -151,6 +166,83 @@ def initialize_population(config: ProjectConfig) -> List[Gene]:
                 attempts = 0
         population.append(candidate)
     return population
+
+
+def _parse_gene_payload(raw_gene: Any) -> Gene:
+    payload = raw_gene.get("gene") if isinstance(raw_gene, dict) and "gene" in raw_gene else raw_gene
+    if not isinstance(payload, (list, tuple)):
+        raise ValueError("Gene payload must be a list or tuple of layer definitions")
+
+    gene: Gene = []
+    for idx, layer_def in enumerate(payload):
+        if isinstance(layer_def, LayerGene):
+            gene.append(layer_def.copy())
+            continue
+        if not isinstance(layer_def, dict):
+            raise TypeError(f"Layer definition at index {idx} must be a dict, got {type(layer_def).__name__}")
+        layer_type_value = layer_def.get("layer_type")
+        if layer_type_value is None:
+            raise KeyError(f"Layer definition at index {idx} missing 'layer_type'")
+        params_src = layer_def.get("params", {})
+        if not isinstance(params_src, dict):
+            raise TypeError(f"Layer definition at index {idx} must use a dict for 'params'")
+        try:
+            layer_type = LayerType(layer_type_value)
+        except ValueError as exc:
+            raise ValueError(f"Unsupported layer_type '{layer_type_value}'") from exc
+        params = {str(key): int(value) for key, value in params_src.items()}
+        gene.append(LayerGene(layer_type=layer_type, params=params))
+
+    if not gene:
+        raise ValueError("Gene payload contained no layers")
+    return gene
+
+
+def _load_resume_genes(config: ProjectConfig) -> List[Gene]:
+    dedup = config.ga.deduplicate_population
+    collected: List[Gene] = []
+    seen: Set[GeneSignature] = set()
+
+    def add_gene(candidate: Gene, source: str) -> None:
+        if not candidate:
+            print(f"[GA] Ignoring empty gene from {source}")
+            return
+        signature = gene_signature(candidate)
+        if dedup and signature in seen:
+            print(f"[GA] Skipping duplicate seed gene from {source}")
+            return
+        seen.add(signature)
+        collected.append([layer.copy() for layer in candidate])
+
+    inline_genes = getattr(config.ga, "resume_genes", ())
+    for idx, raw_gene in enumerate(inline_genes):
+        try:
+            gene = _parse_gene_payload(raw_gene)
+        except Exception as exc:
+            print(f"[GA] Failed to parse config.resume_genes[{idx}]: {exc}")
+            continue
+        add_gene(gene, f"config.resume_genes[{idx}]")
+
+    file_entries = getattr(config.ga, "resume_gene_files", ())
+    for entry in file_entries:
+        path = Path(entry)
+        if not path.exists():
+            print(f"[GA] Seed gene file not found: {path}")
+            continue
+        try:
+            payload = json.loads(path.read_text())
+            gene = _parse_gene_payload(payload)
+        except Exception as exc:
+            print(f"[GA] Failed to load seed gene from {path}: {exc}")
+            continue
+        add_gene(gene, str(path))
+
+    if len(collected) > config.ga.population_size:
+        print(
+            f"[GA] Truncating seed genes from {len(collected)} to population size {config.ga.population_size}"
+        )
+        collected = collected[: config.ga.population_size]
+    return collected
 
 
 def tournament_selection(population: Sequence[Gene], fitness: Sequence[float], config: ProjectConfig) -> Gene:
@@ -224,7 +316,10 @@ def mutate(gene: Gene, config: ProjectConfig) -> Gene:
 
 
 def run_genetic_search(evaluator: FitnessEvaluator, config: ProjectConfig) -> Tuple[Gene, float]:
-    population = initialize_population(config)
+    seed_genes = _load_resume_genes(config)
+    if seed_genes:
+        print(f"[GA] Warm-starting population with {len(seed_genes)} provided gene(s)")
+    population = initialize_population(config, seed_genes=seed_genes)
     best_gene: Gene = []
     best_fitness = -math.inf
     device_list = _resolve_device_list(config)

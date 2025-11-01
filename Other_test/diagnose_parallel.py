@@ -1,4 +1,5 @@
 """Utility script to sanity-check multiprocessing behaviour on the current system."""
+# Please put the file back into the src folder before use.
 
 from __future__ import annotations
 

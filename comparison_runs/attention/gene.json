@@ -1,0 +1,23 @@
+[
+  {
+    "layer_type": "Attention",
+    "params": {
+      "embed_dim": 44,
+      "heads": 2
+    }
+  },
+  {
+    "layer_type": "Attention",
+    "params": {
+      "embed_dim": 34,
+      "heads": 2
+    }
+  },
+  {
+    "layer_type": "Attention",
+    "params": {
+      "embed_dim": 22,
+      "heads": 2
+    }
+  }
+]

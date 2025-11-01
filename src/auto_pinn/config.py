@@ -40,6 +40,8 @@ class GAConfig:
     elite_count: int = 2
     tournament_size: int = 3
     deduplicate_population: bool = True
+    resume_genes: Tuple[Tuple[dict, ...], ...] = ()  # Optional seeded genes for warm-starting the population
+    resume_gene_files: Tuple[str, ...] = ()  # Optional JSON files providing additional seed genes
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 1000
+    epochs: int = 25000
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0

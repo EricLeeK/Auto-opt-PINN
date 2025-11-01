@@ -1,7 +1,12 @@
 {
-  "targets": ["dnn"],
+  "targets": ["attention"],
   "skip_reference": true,
-  "epochs": 80000,
+  "epochs": 25000,
+  "attention": {
+    "depth": 3,
+    "embeds": [64, 48, 32],
+    "heads": [2, 2, 2]
+  },
   "evaluate": true,
   "plot": true
 }
