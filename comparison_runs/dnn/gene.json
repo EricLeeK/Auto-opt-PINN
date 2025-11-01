@@ -1,0 +1,26 @@
+[
+  {
+    "layer_type": "DNN",
+    "params": {
+      "units": 64
+    }
+  },
+  {
+    "layer_type": "DNN",
+    "params": {
+      "units": 64
+    }
+  },
+  {
+    "layer_type": "DNN",
+    "params": {
+      "units": 64
+    }
+  },
+  {
+    "layer_type": "DNN",
+    "params": {
+      "units": 64
+    }
+  }
+]

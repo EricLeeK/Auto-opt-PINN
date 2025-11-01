@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Checkpoint 图像逐帧动画浏览器</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", "PingFang SC", Roboto, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      background: #121417;
+      color: #f5f7fa;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="file"],
+    input[type="range"],
+    select,
+    button {
+      font-size: 1rem;
+    }
+
+    input[type="range"] {
+      flex: 1 1 260px;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: #00b894;
+      color: #0b0d10;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .player {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .image-stage {
+      position: relative;
+      border-radius: 1rem;
+      overflow: hidden;
+      background: #1c2128;
+      border: 1px solid #2f363d;
+      max-width: min(100%, 1024px);
+      margin-inline: auto;
+      min-height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .image-stage img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.95rem;
+    }
+
+    .info-bar span {
+      opacity: 0.8;
+    }
+
+    .timeline {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      opacity: 0.6;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Checkpoint 图像动画浏览器</h1>
+    <p>选择由 <code>analyze_checkpoints.py</code> 生成的图像文件夹，播放或拖拽滑块查看 PINN 逼近过程。</p>
+    <div class="controls">
+      <label for="folder">1. 选择图像文件夹：</label>
+      <input id="folder" type="file" webkitdirectory directory multiple />
+      <label for="interval">播放速度 (毫秒/帧)：</label>
+      <input id="interval" type="number" value="800" min="100" step="100" style="width: 6rem;" />
+    </div>
+  </header>
+
+  <section class="player">
+    <div class="image-stage">
+      <img id="frame" alt="等待加载图像…" />
+    </div>
+
+    <div class="timeline">
+      <button id="play" disabled>▶ 播放</button>
+      <input id="slider" type="range" min="0" max="0" value="0" disabled />
+    </div>
+
+    <div class="info-bar">
+      <span id="status">尚未加载任何图片</span>
+      <span id="filename"></span>
+    </div>
+  </section>
+
+  <footer>
+    <p>提示：使用滑块手动查看指定帧，点击“播放”自动循环展示；再次点击即可暂停。</p>
+  </footer>
+
+  <script>
+    const folderInput = document.getElementById('folder');
+    const slider = document.getElementById('slider');
+    const playBtn = document.getElementById('play');
+    const frameImg = document.getElementById('frame');
+    const statusLabel = document.getElementById('status');
+    const filenameLabel = document.getElementById('filename');
+    const intervalInput = document.getElementById('interval');
+
+    let frames = [];
+    let timer = null;
+    let currentIndex = 0;
+
+    function resetPlayer() {
+      frames = [];
+      currentIndex = 0;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      slider.disabled = true;
+      playBtn.disabled = true;
+      playBtn.textContent = '▶ 播放';
+      slider.value = '0';
+      slider.max = '0';
+      frameImg.src = '';
+      frameImg.alt = '等待加载图像…';
+      statusLabel.textContent = '尚未加载任何图片';
+      filenameLabel.textContent = '';
+    }
+
+    function sortFrames(fileList) {
+      return Array.from(fileList)
+        .filter(file => file.type.startsWith('image/'))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    }
+
+    function showFrame(index) {
+      if (frames.length === 0) {
+        return;
+      }
+      const file = frames[index];
+      const url = URL.createObjectURL(file);
+      frameImg.src = url;
+      frameImg.onload = () => URL.revokeObjectURL(url);
+      slider.value = String(index);
+      statusLabel.textContent = `帧 ${index + 1} / ${frames.length}`;
+      filenameLabel.textContent = file.name;
+    }
+
+    function togglePlay() {
+      if (frames.length === 0) {
+        return;
+      }
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+        playBtn.textContent = '▶ 播放';
+      } else {
+        const interval = Math.max(100, Number(intervalInput.value) || 800);
+        timer = setInterval(() => {
+          currentIndex = (currentIndex + 1) % frames.length;
+          showFrame(currentIndex);
+        }, interval);
+        playBtn.textContent = '⏸ 暂停';
+      }
+    }
+
+    folderInput.addEventListener('change', (event) => {
+      resetPlayer();
+      const fileList = event.target.files;
+      if (!fileList || fileList.length === 0) {
+        statusLabel.textContent = '未选择任何文件';
+        return;
+      }
+
+      frames = sortFrames(fileList);
+      if (frames.length === 0) {
+        statusLabel.textContent = '所选文件夹内不包含图像文件';
+        return;
+      }
+
+      slider.disabled = false;
+      slider.max = String(frames.length - 1);
+      slider.value = '0';
+      playBtn.disabled = false;
+
+      statusLabel.textContent = `已加载 ${frames.length} 张图片`;
+      showFrame(0);
+    });
+
+    slider.addEventListener('input', (event) => {
+      if (frames.length === 0) {
+        return;
+      }
+      currentIndex = Number(event.target.value);
+      showFrame(currentIndex);
+    });
+
+    playBtn.addEventListener('click', togglePlay);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && timer) {
+        togglePlay();
+      }
+    });
+  </script>
+</body>
+</html>

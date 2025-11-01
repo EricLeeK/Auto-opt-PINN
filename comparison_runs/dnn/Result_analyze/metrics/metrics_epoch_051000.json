@@ -1,0 +1,16 @@
+{
+  "checkpoint": "checkpoint_epoch_051000.pt",
+  "epoch": 51000,
+  "mse": 0.0009680840636498085,
+  "mae": 0.011866820503543395,
+  "max_abs_error": 0.5224597542755052,
+  "relative_l2": 0.05064650715624431,
+  "device": "cpu",
+  "dtype": "torch.float32",
+  "train_total": 0.0006002649897709489,
+  "train_pde": 0.00017041093087755144,
+  "train_boundary": 0.00033406808506697416,
+  "train_initial": 9.578594472259283e-05,
+  "figure": "figures\\comparison_epoch_051000.png",
+  "grid": "grids\\grid_epoch_051000.npz"
+}
