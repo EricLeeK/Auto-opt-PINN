@@ -1,9 +1,9 @@
 """Train and visualise the best gene stored in ``search_results.json``.
 
 This script loads the architecture discovered by the genetic search, retrains a
-Hybrid PINN on the Burgers equation domain, and compares the resulting
+Hybrid PINN on the Allen-Cahn equation domain, and compares the resulting
 prediction against the provided high-resolution numerical solution stored in
-``src/burgers_shock.mat``.
+``src/Allen_Cahn.mat``.
 """
 
 from __future__ import annotations
@@ -28,6 +28,9 @@ from auto_pinn.gene import Gene, LayerGene, LayerType
 from auto_pinn.pinn import HybridPINN
 
 
+DEFAULT_MAT_PATH = Path(__file__).resolve().parent / "Allen_Cahn.mat"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the best Auto-PINN gene and visualise the result.")
     parser.add_argument(
@@ -39,8 +42,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--mat",
         type=Path,
-        default=Path("burgers_shock.mat"),
-        help="Reference Burgers solution stored as a MATLAB .mat file.",
+        default=DEFAULT_MAT_PATH,
+        help="Reference Allen-Cahn solution stored as a MATLAB .mat file.",
     )
     parser.add_argument(
         "--output",
@@ -139,7 +142,7 @@ def train_step(
     optimizer: Adam,
     mse: nn.Module,
     batch,
-    viscosity: float,
+    diffusion: float,
     training_cfg: TrainingConfig,
 ) -> Tuple[float, float, float, float]:
     optimizer.zero_grad(set_to_none=True)
@@ -154,7 +157,8 @@ def train_step(
     grad_outputs_x = torch.ones_like(u_x)
     u_xx = torch.autograd.grad(outputs=u_x, inputs=collocation, grad_outputs=grad_outputs_x, create_graph=True)[0][:, 0:1]
 
-    pde_residual = u_t + u_pred * u_x - viscosity * u_xx
+    reaction = 5.0 * (u_pred - u_pred.pow(3))
+    pde_residual = u_t - diffusion * u_xx - reaction
     pde_loss = mse(pde_residual, torch.zeros_like(pde_residual))
 
     if training_cfg.data_terms_require_grad:
@@ -224,7 +228,7 @@ def train_gene(config: ProjectConfig, gene: Gene, resume_checkpoint: Path | None
             optimizer,
             mse,
             batch,
-            viscosity=config.domain.viscosity,
+            diffusion=config.domain.diffusion,
             training_cfg=config.training,
         )
         history.append((total, pde, boundary, initial))

@@ -155,8 +155,9 @@ class PINNFitnessEvaluator:
             grad_outputs=grad_outputs_x,
             create_graph=True,
         )[0][:, 0:1]
-        viscosity = self.config.domain.viscosity
-        pde_residual = u_t + u_pred * u_x - viscosity * u_xx
+        diffusion = self.config.domain.diffusion
+        reaction = 5.0 * (u_pred - u_pred.pow(3))
+        pde_residual = u_t - diffusion * u_xx - reaction
         pde_loss = mse(pde_residual, torch.zeros_like(pde_residual))
 
         if self.config.training.data_terms_require_grad:

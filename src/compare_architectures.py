@@ -33,7 +33,7 @@ MODEL_TITLES = {
 }
 
 DEFAULT_REFERENCE_RESULTS = Path("search_results.json")
-DEFAULT_MAT_PATH = Path(__file__).resolve().parent / "burgers_shock.mat"
+DEFAULT_MAT_PATH = Path(__file__).resolve().parent / "Allen_Cahn.mat"
 
 
 def _coerce_bool(value) -> bool:
@@ -51,7 +51,7 @@ def _coerce_bool(value) -> bool:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train and compare Auto-PINN architectures with matched parameter counts.")
     parser.add_argument("--reference-results", type=Path, default=DEFAULT_REFERENCE_RESULTS, help="JSON file containing the reference (best) gene.")
-    parser.add_argument("--mat", type=Path, default=DEFAULT_MAT_PATH, help="Reference Burgers solution used for evaluation.")
+    parser.add_argument("--mat", type=Path, default=DEFAULT_MAT_PATH, help="Reference Allen-Cahn solution used for evaluation.")
     parser.add_argument("--output-dir", type=Path, default=Path("comparison_runs"), help="Directory where comparison artefacts are written.")
     parser.add_argument("--device", type=str, default=None, help="Override training device (defaults to config).")
     parser.add_argument("--epochs", type=int, default=80000, help="Training epochs for this comparison run (defaults to 80000).")

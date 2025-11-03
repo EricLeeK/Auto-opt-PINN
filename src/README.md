@@ -7,7 +7,7 @@
 Auto-PINN 是一个自动化的 PINN 架构搜索框架，能够：
 - 🔍 自动探索混合网络架构（DNN + KAN + Attention）
 - 🧬 使用遗传算法优化网络结构
-- 📊 在 Burgers 方程上验证性能
+- 📊 在 Allen-Cahn 方程上验证性能
 
 ## 🚀 快速开始
 

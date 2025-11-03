@@ -12,7 +12,13 @@ class DomainConfig:
 
     x_bounds: Tuple[float, float] = (-1.0, 1.0)
     t_bounds: Tuple[float, float] = (0.0, 1.0)
-    viscosity: float = 0.01 / 3.141592653589793
+    diffusion: float = 1e-3
+
+    @property
+    def viscosity(self) -> float:
+        """Backward compatible alias for legacy checkpoints expecting Burgers viscosity."""
+
+        return self.diffusion
 
 
 @dataclass(frozen=True)

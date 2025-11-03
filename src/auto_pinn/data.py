@@ -1,4 +1,4 @@
-"""Sampling utilities for Burgers' equation PINN training."""
+"""Sampling utilities for the Allen-Cahn equation PINN training."""
 
 from __future__ import annotations
 
@@ -21,14 +21,13 @@ class TrainingBatch:
     initial_targets: torch.Tensor
 
 
-def _burgers_initial_condition(x: torch.Tensor) -> torch.Tensor:
-    return -torch.sin(torch.pi * x)
+def _allen_cahn_initial_condition(x: torch.Tensor) -> torch.Tensor:
+    return x.pow(2) * torch.cos(torch.pi * x)
 
 
-def _burgers_boundary_condition(t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-    left = torch.zeros_like(t)
-    right = torch.zeros_like(t)
-    return left, right
+def _allen_cahn_boundary_condition(t: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    constraint = -torch.ones_like(t)
+    return constraint, constraint
 
 
 def _sample_uniform(count: int, bounds: Tuple[float, float], device: torch.device, dtype: torch.dtype) -> torch.Tensor:
@@ -42,7 +41,7 @@ def generate_training_batch(domain: DomainConfig, training: TrainingConfig, devi
     collocation = torch.cat([x_coll, t_coll], dim=1)
 
     t_bc = _sample_uniform(training.boundary_points, domain.t_bounds, device, dtype)
-    left_vals, right_vals = _burgers_boundary_condition(t_bc)
+    left_vals, right_vals = _allen_cahn_boundary_condition(t_bc)
     left_inputs = torch.cat([torch.full_like(t_bc, domain.x_bounds[0]), t_bc], dim=1)
     right_inputs = torch.cat([torch.full_like(t_bc, domain.x_bounds[1]), t_bc], dim=1)
     boundary_inputs = torch.cat([left_inputs, right_inputs], dim=0)
@@ -51,7 +50,7 @@ def generate_training_batch(domain: DomainConfig, training: TrainingConfig, devi
     x_init = _sample_uniform(training.initial_points, domain.x_bounds, device, dtype)
     t_init = torch.zeros_like(x_init)
     initial_inputs = torch.cat([x_init, t_init], dim=1)
-    initial_targets = _burgers_initial_condition(x_init)
+    initial_targets = _allen_cahn_initial_condition(x_init)
 
     return TrainingBatch(
         collocation=collocation,
@@ -76,7 +75,7 @@ def generate_training_batch(domain: DomainConfig, training: TrainingConfig, devi
 #     └─ 返回 TrainingBatch (数据容器)
 
 # 要点	说明
-# 核心职责	为 PINN 生成符合 Burgers' 方程的训练数据
+# 核心职责	为 PINN 生成符合 Allen-Cahn 方程的训练数据
 # 三类数据	Collocation（PDE）、Boundary（边界）、Initial（初值）
 # 设计模式	使用 @dataclass 容器封装，类型安全
 # 物理约束	通过采样点强制神经网络学习 PDE、BC、IC

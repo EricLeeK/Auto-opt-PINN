@@ -1,4 +1,4 @@
-"""Analyse checkpoint trajectories by evaluating stored PINN states against the Burgers reference solution."""
+"""Analyse checkpoint trajectories by evaluating stored PINN states against the Allen-Cahn reference solution."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from run_best_gene import (
 )
 
 CHECKPOINT_REGEX = re.compile(r"checkpoint_epoch_(\d+)\.pt$", re.IGNORECASE)
-DEFAULT_MAT_PATH = Path(__file__).resolve().parent / "burgers_shock.mat"
+DEFAULT_MAT_PATH = Path(__file__).resolve().parent / "Allen_Cahn.mat"
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
         "--mat",
         type=Path,
         default=DEFAULT_MAT_PATH,
-        help="Path to burgers_shock.mat reference solution.",
+    help="Path to Allen_Cahn.mat reference solution.",
     )
     parser.add_argument(
         "--device",
@@ -79,6 +79,9 @@ def _coerce_project_config(raw: Any) -> ProjectConfig:
         for key in ("domain", "search", "ga", "training", "runtime"):
             if key in raw and isinstance(raw[key], dict):
                 base[key].update(raw[key])
+        domain_cfg = base["domain"]
+        if "viscosity" in domain_cfg:
+            domain_cfg.setdefault("diffusion", domain_cfg.pop("viscosity"))
         return ProjectConfig(  # type: ignore[arg-type]
             domain=DEFAULT_CONFIG.domain.__class__(**base["domain"]),
             search=DEFAULT_CONFIG.search.__class__(**base["search"]),
