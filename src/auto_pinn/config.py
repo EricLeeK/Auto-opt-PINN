@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Tuple
 
 
@@ -57,7 +57,7 @@ class TrainingConfig:
     collocation_points: int = 512
     boundary_points: int = 128
     initial_points: int = 128
-    epochs: int = 25000
+    epochs: int = 1000
     learning_rate: float = 1e-3
     pde_weight: float = 1.0
     boundary_weight: float = 1.0
@@ -93,6 +93,24 @@ class ProjectConfig:
 
 
 DEFAULT_CONFIG = ProjectConfig()
+
+EVALUATION_TRAINING_EPOCHS = 25000
+
+
+def default_evaluation_config() -> ProjectConfig:
+    """Return a ProjectConfig tuned for evaluation-oriented retraining scripts."""
+
+    training = replace(DEFAULT_CONFIG.training, epochs=EVALUATION_TRAINING_EPOCHS)
+    search = replace(DEFAULT_CONFIG.search)
+    ga = replace(DEFAULT_CONFIG.ga)
+    runtime = replace(DEFAULT_CONFIG.runtime)
+    return ProjectConfig(
+        domain=DEFAULT_CONFIG.domain,
+        search=search,
+        ga=ga,
+        training=training,
+        runtime=runtime,
+    )
 
 
 

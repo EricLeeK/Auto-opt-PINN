@@ -11,7 +11,7 @@ from typing import Callable, Dict, Iterable, List, Tuple
 import numpy as np
 import torch
 
-from auto_pinn.config import DEFAULT_CONFIG, ProjectConfig
+from auto_pinn.config import EVALUATION_TRAINING_EPOCHS, ProjectConfig, default_evaluation_config
 from auto_pinn.gene import Gene, LayerGene, LayerType
 from auto_pinn.pinn import HybridPINN
 from run_best_gene import (
@@ -54,7 +54,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mat", type=Path, default=DEFAULT_MAT_PATH, help="Reference Allen-Cahn solution used for evaluation.")
     parser.add_argument("--output-dir", type=Path, default=Path("comparison_runs"), help="Directory where comparison artefacts are written.")
     parser.add_argument("--device", type=str, default=None, help="Override training device (defaults to config).")
-    parser.add_argument("--epochs", type=int, default=80000, help="Training epochs for this comparison run (defaults to 80000).")
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=EVALUATION_TRAINING_EPOCHS,
+        help=f"Training epochs for this comparison run (defaults to {EVALUATION_TRAINING_EPOCHS}).",
+    )
     parser.add_argument("--log-every", type=int, default=None, help="Override logging interval.")
     parser.add_argument("--tolerance", type=float, default=0.10, help="Maximum relative parameter mismatch allowed (fraction).")
     parser.add_argument("--disable-auto-match", action="store_true", help="Do not rescale baselines to match parameters; only report differences.")
@@ -427,7 +432,7 @@ def main() -> None:
     target_params = parameter_count(reference_gene)
     print(f"[Compare] Reference parameters: {target_params}")
 
-    base_config = ensure_device(DEFAULT_CONFIG, args.device)
+    base_config = ensure_device(default_evaluation_config(), args.device)
     base_config = override_runtime(base_config, args.epochs, args.log_every)
 
     summary: Dict[str, Dict[str, float]] = {}

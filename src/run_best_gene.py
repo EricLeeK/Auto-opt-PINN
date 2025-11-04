@@ -22,7 +22,7 @@ from scipy.io import loadmat
 from torch import nn
 from torch.optim import Adam
 
-from auto_pinn.config import DEFAULT_CONFIG, ProjectConfig, RuntimeConfig, TrainingConfig
+from auto_pinn.config import ProjectConfig, RuntimeConfig, TrainingConfig, default_evaluation_config
 from auto_pinn.data import generate_training_batch
 from auto_pinn.gene import Gene, LayerGene, LayerType
 from auto_pinn.pinn import HybridPINN
@@ -343,7 +343,7 @@ def main() -> None:
 
     gene = load_gene(args.results)
 
-    config = ensure_device(DEFAULT_CONFIG, args.device)
+    config = ensure_device(default_evaluation_config(), args.device)
     config = override_runtime(config, args.epochs, args.log_every)
 
     print("[Runner] Using device:", config.training.device)
