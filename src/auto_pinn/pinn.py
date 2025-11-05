@@ -67,36 +67,40 @@ class KANLayer(nn.Module):
     def _bspline_basis(self, x: torch.Tensor) -> torch.Tensor:
         knots = self.knots.to(dtype=x.dtype, device=x.device)
         degree = self.degree
-        n_basis = knots.shape[0] - 1
 
         x = x.unsqueeze(-1)
-        basis_segments = []
-        for i in range(n_basis):
-            left, right = knots[i], knots[i + 1]
-            if i == n_basis - 1:
-                cond = (x >= left) & (x <= right)
-            else:
-                cond = (x >= left) & (x < right)
-            basis_segments.append(cond.to(x.dtype))
-        basis = torch.cat(basis_segments, dim=-1)
+        left = knots[:-1].view(1, 1, -1)
+        right = knots[1:].view(1, 1, -1)
+        basis = ((x >= left) & (x < right)).to(x.dtype)
+        basis[..., -1:] = ((x >= left[..., -1:]) & (x <= right[..., -1:])).to(x.dtype)
 
         if degree == 0:
             return basis
 
-        for d in range(1, degree + 1):
-            new_basis = []
-            upper = n_basis - d
-            for i in range(upper):
-                denom1 = knots[i + d] - knots[i]
-                denom2 = knots[i + d + 1] - knots[i + 1]
-                term1 = torch.zeros_like(x)
-                term2 = torch.zeros_like(x)
-                if denom1 > 0:
-                    term1 = ((x - knots[i]) / denom1) * basis[:, i : i + 1]
-                if denom2 > 0:
-                    term2 = ((knots[i + d + 1] - x) / denom2) * basis[:, i + 1 : i + 2]
-                new_basis.append(term1 + term2)
-            basis = torch.cat(new_basis, dim=-1)
+        for r in range(1, degree + 1):
+            m = basis.shape[-1] - 1
+            if m <= 0:
+                break
+            idx = torch.arange(m, device=x.device)
+            left_knots = knots[idx].view(1, 1, -1)
+            right_knots = knots[idx + r + 1].view(1, 1, -1)
+            denom1 = (knots[idx + r] - knots[idx]).view(1, 1, -1)
+            denom2 = (knots[idx + r + 1] - knots[idx + 1]).view(1, 1, -1)
+
+            basis_left = basis[..., :m]
+            basis_right = basis[..., 1 : m + 1]
+
+            term1 = torch.where(
+                denom1 > 0,
+                (x - left_knots) / denom1 * basis_left,
+                torch.zeros_like(basis_left),
+            )
+            term2 = torch.where(
+                denom2 > 0,
+                (right_knots - x) / denom2 * basis_right,
+                torch.zeros_like(basis_left),
+            )
+            basis = term1 + term2
 
         return basis
 
@@ -105,11 +109,7 @@ class KANLayer(nn.Module):
         scaled = (inputs - self.input_shift) * scale
         normalised = torch.sigmoid(scaled)
 
-        basis_values = []
-        for feat in range(self.in_features):
-            basis_feat = self._bspline_basis(normalised[:, feat])
-            basis_values.append(basis_feat)
-        basis_tensor = torch.stack(basis_values, dim=1)
+        basis_tensor = self._bspline_basis(normalised)
 
         spline_mix = torch.einsum("bfg,fgw->bw", basis_tensor, self.spline_coeffs)
         linear_skip = self.skip_linear(inputs)
