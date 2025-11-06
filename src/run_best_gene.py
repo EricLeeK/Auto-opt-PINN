@@ -81,6 +81,12 @@ def parse_args() -> argparse.Namespace:
         help="Override logging frequency in epochs.",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Override random seed for reproducibility (defaults to config seed=717).",
+    )
+    parser.add_argument(
         "--show",
         action="store_true",
         help="Display the matplotlib figure interactively in addition to saving it.",
@@ -112,7 +118,7 @@ def ensure_device(config: ProjectConfig, requested: str | None) -> ProjectConfig
     return config
 
 
-def override_runtime(config: ProjectConfig, epochs: int | None, log_every: int | None) -> ProjectConfig:
+def override_runtime(config: ProjectConfig, epochs: int | None, log_every: int | None, seed: int | None) -> ProjectConfig:
     training_cfg = config.training
     runtime_cfg = config.runtime
     updated = False
@@ -121,6 +127,9 @@ def override_runtime(config: ProjectConfig, epochs: int | None, log_every: int |
         updated = True
     if log_every is not None and log_every != runtime_cfg.log_every:
         runtime_cfg = replace(runtime_cfg, log_every=log_every)
+        updated = True
+    if seed is not None and seed != runtime_cfg.seed:
+        runtime_cfg = replace(runtime_cfg, seed=seed)
         updated = True
     if updated:
         config = replace(config, training=training_cfg, runtime=runtime_cfg)
@@ -349,10 +358,11 @@ def main() -> None:
     gene = load_gene(args.results)
 
     config = ensure_device(default_evaluation_config(), args.device)
-    config = override_runtime(config, args.epochs, args.log_every)
+    config = override_runtime(config, args.epochs, args.log_every, args.seed)
 
     print("[Runner] Using device:", config.training.device)
     print("[Runner] Training epochs:", config.training.epochs)
+    print("[Runner] Random seed:", config.runtime.seed)
     print("[Runner] Gene architecture:")
     for idx, layer in enumerate(gene, start=1):
         params = ", ".join(f"{key}={value}" for key, value in layer.params.items())
