@@ -1,4 +1,4 @@
-search_results.json
+
 *.txt
 *.md
 *.zip
@@ -50,7 +50,7 @@ env/
 Thumbs.db
 
 # 项目特定
-search_results.json
+
 *.log
 checkpoints/
 results/

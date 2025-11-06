@@ -1,0 +1,39 @@
+{
+  "gene": [
+    {
+      "layer_type": "Attention",
+      "params": {
+        "embed_dim": 48,
+        "heads": 2
+      }
+    },
+    {
+      "layer_type": "DNN",
+      "params": {
+        "units": 32
+      }
+    },
+    {
+      "layer_type": "KAN",
+      "params": {
+        "width": 24,
+        "grid_points": 5,
+        "spline_order": 2
+      }
+    },
+    {
+      "layer_type": "Attention",
+      "params": {
+        "embed_dim": 32,
+        "heads": 4
+      }
+    }
+  ],
+  "fitness": 0.0,
+  "best_loss": 0.0,
+  "metadata": {
+    "description": "Best gene for Allen-Cahn equation",
+    "found_by": "genetic_algorithm",
+    "date": "2025-11"
+  }
+}
