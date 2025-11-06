@@ -79,6 +79,19 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Random seed for reproducibility (default from config).",
     )
+    parser.add_argument(
+        "--gpu-devices",
+        type=str,
+        nargs="+",
+        default=None,
+        help="GPU devices to use (e.g., cuda:0 cuda:1). If not specified, uses config default.",
+    )
+    parser.add_argument(
+        "--gpu-concurrency",
+        type=int,
+        default=None,
+        help="Number of parallel workers per GPU (default from config).",
+    )
     return parser.parse_args()
 
 
@@ -110,6 +123,10 @@ def apply_overrides(config: ProjectConfig, args: argparse.Namespace) -> ProjectC
         runtime_cfg = replace(runtime_cfg, workers=args.workers)
     if args.seed is not None:
         runtime_cfg = replace(runtime_cfg, seed=args.seed)
+    if args.gpu_devices is not None:
+        runtime_cfg = replace(runtime_cfg, gpu_devices=tuple(args.gpu_devices))
+    if args.gpu_concurrency is not None:
+        runtime_cfg = replace(runtime_cfg, gpu_concurrency=args.gpu_concurrency)
     
     # Build new config
     config = replace(
@@ -133,6 +150,8 @@ def run(config: ProjectConfig, output_path: Path) -> None:
     print(f"Training epochs:    {config.training.epochs}")
     print(f"Device:             {config.training.device}")
     print(f"Workers:            {config.runtime.workers}")
+    print(f"GPU devices:        {config.runtime.gpu_devices}")
+    print(f"GPU concurrency:    {config.runtime.gpu_concurrency}")
     print(f"Random seed:        {config.runtime.seed}")
     print(f"Seed gene files:    {config.ga.resume_gene_files or 'None'}")
     print("=" * 70 + "\n")
