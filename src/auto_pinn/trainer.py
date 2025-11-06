@@ -181,6 +181,11 @@ class PINNFitnessEvaluator:
         )
 
         loss.backward()
+        
+        # Clip gradients to prevent explosion and NaN
+        if hasattr(self.config.training, 'gradient_clip_norm') and self.config.training.gradient_clip_norm > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=self.config.training.gradient_clip_norm)
+        
         optimizer.step()
 
         return (

@@ -65,13 +65,18 @@ class KANLayer(nn.Module):
         return knots
 
     def _bspline_basis(self, x: torch.Tensor) -> torch.Tensor:
+        """Optimized vectorized implementation with improved numerical stability."""
         knots = self.knots.to(dtype=x.dtype, device=x.device)
         degree = self.degree
+        
+        # Epsilon for numerical stability
+        eps = torch.finfo(x.dtype).eps
 
         x = x.unsqueeze(-1)
         left = knots[:-1].view(1, 1, -1)
         right = knots[1:].view(1, 1, -1)
         basis = ((x >= left) & (x < right)).to(x.dtype)
+        # Ensure the last basis function is inclusive on the right
         basis[..., -1:] = ((x >= left[..., -1:]) & (x <= right[..., -1:])).to(x.dtype)
 
         if degree == 0:
@@ -82,24 +87,26 @@ class KANLayer(nn.Module):
             if m <= 0:
                 break
             idx = torch.arange(m, device=x.device)
-            left_knots = knots[idx].view(1, 1, -1)
-            right_knots = knots[idx + r + 1].view(1, 1, -1)
+            
+            # Denominators can be zero, causing instability
             denom1 = (knots[idx + r] - knots[idx]).view(1, 1, -1)
             denom2 = (knots[idx + r + 1] - knots[idx + 1]).view(1, 1, -1)
 
             basis_left = basis[..., :m]
             basis_right = basis[..., 1 : m + 1]
 
-            term1 = torch.where(
-                denom1 > 0,
-                (x - left_knots) / denom1 * basis_left,
-                torch.zeros_like(basis_left),
-            )
-            term2 = torch.where(
-                denom2 > 0,
-                (right_knots - x) / denom2 * basis_right,
-                torch.zeros_like(basis_left),
-            )
+            # --- THE FIX ---
+            # Safe division: add epsilon and then mask out terms where original denom was zero
+            
+            # Calculate terms with safe denominators
+            term1_val = (x - knots[idx].view(1, 1, -1)) / (denom1 + eps) * basis_left
+            term2_val = (knots[idx + r + 1].view(1, 1, -1) - x) / (denom2 + eps) * basis_right
+            
+            # Use torch.where to ensure that if the original denominator was zero, the term is zero.
+            # This correctly mimics the logic of the original `if denom > 0:`
+            term1 = torch.where(denom1 > 0, term1_val, torch.zeros_like(term1_val))
+            term2 = torch.where(denom2 > 0, term2_val, torch.zeros_like(term2_val))
+
             basis = term1 + term2
 
         return basis
