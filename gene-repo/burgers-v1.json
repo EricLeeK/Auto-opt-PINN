@@ -1,0 +1,33 @@
+{
+  "fitness": 4.0298163004083,
+  "gene": [
+    {
+      "layer_type": "Attention",
+      "params": {
+        "embed_dim": 64,
+        "heads": 2
+      }
+    },
+    {
+      "layer_type": "DNN",
+      "params": {
+        "units": 64
+      }
+    },
+    {
+      "layer_type": "KAN",
+      "params": {
+        "width": 8,
+        "grid_points": 3,
+        "spline_order": 2
+      }
+    },
+    {
+      "layer_type": "Attention",
+      "params": {
+        "embed_dim": 32,
+        "heads": 2
+      }
+    }
+  ]
+}

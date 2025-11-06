@@ -321,7 +321,7 @@ def main() -> None:
         if max_diff < 1e-5:
             print("  ✓ Outputs are numerically identical (within tolerance)")
         else:
-            print("  ⚠ Outputs differ slightly (expected due to different random init)")
+            print(" Outputs differ slightly (expected due to different random init)")
 
 
 if __name__ == "__main__":
