@@ -1,0 +1,39 @@
+{
+  "comment": "配置说明：一次性运行三个基线模型，每个 25000 轮",
+  "targets": ["dnn", "kan", "attention"],
+  "skip_reference": true,
+  "epochs": 25000,
+  "log_every": 500,
+  "device": "cuda",
+  "tolerance": 0.10,
+  "allow_mismatch": true,
+  "evaluate": true,
+  "plot": true,
+  "show": false,
+  
+  "dnn": {
+    "depth": 4,
+    "widths": [64, 48, 32, 24],
+    "base_width": 50
+  },
+  
+  "kan": {
+    "depth": 3,
+    "widths": [32, 24, 16],
+    "base_width": 24,
+    "grids": [5, 5, 5],
+    "base_grid": 5,
+    "orders": [2, 2, 2],
+    "base_order": 2
+  },
+  
+  "attention": {
+    "depth": 3,
+    "embeds": [48, 32, 24],
+    "base_embed": 40,
+    "heads": [2, 2, 2],
+    "base_heads": 2
+  },
+  
+  "output_dir": "/kaggle/working/comparison_runs"
+}

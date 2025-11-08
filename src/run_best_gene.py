@@ -287,17 +287,28 @@ def train_gene(config: ProjectConfig, gene: Gene, resume_checkpoint: Path | None
 
 
 def load_reference_solution(path: Path) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load Allen-Cahn reference solution from .mat file.
+    
+    Supports multiple naming conventions:
+    - x, t, u (Allen-Cahn format)
+    - x, t, usol (Burgers format)
+    """
     data = loadmat(path)
     possible_keys = {key.lower(): key for key in data.keys()}
+    
+    # Try to find x, t, u keys (case-insensitive)
     try:
         x_key = possible_keys.get("x", "x")
         t_key = possible_keys.get("t", "t")
-        u_key = possible_keys.get("usol", "usol")
+        # Try 'u' first, then 'usol' as fallback
+        u_key = possible_keys.get("u", possible_keys.get("usol", "u"))
+        
         x = np.squeeze(data[x_key])
         t = np.squeeze(data[t_key])
         u = np.array(data[u_key], dtype=np.float64)
     except KeyError as exc:
         raise KeyError(f"Could not find expected keys in {path}. Available: {list(data.keys())}") from exc
+    
     if u.shape[0] != x.size and u.shape[0] == t.size:
         u = u.T  # align to (len(x), len(t))
     return x, t, u
