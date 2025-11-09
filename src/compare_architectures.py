@@ -433,7 +433,7 @@ def main() -> None:
     print(f"[Compare] Reference parameters: {target_params}")
 
     base_config = ensure_device(default_evaluation_config(), args.device)
-    base_config = override_runtime(base_config, args.epochs, args.log_every)
+    base_config = override_runtime(base_config, args.epochs, args.log_every, seed=None)
 
     summary: Dict[str, Dict[str, float]] = {}
     gene_records: Dict[str, Gene] = {}

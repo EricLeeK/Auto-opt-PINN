@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>PINN Checkpoint 分析与可视化</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      /* 色彩系统 - Dark Glassmorphism Palette */
+      --color-bg-base: #0F172A;
+      --color-bg-gradient-start: #0F172A;
+      --color-bg-gradient-end: #1E293B;
+      --color-container-bg: rgba(30, 41, 59, 0.75);
+      --color-container-hover: rgba(30, 41, 59, 0.85);
+      --color-text-primary: #F1F5F9;
+      --color-text-secondary: #94A3B8;
+      --color-text-tertiary: #64748B;
+      --color-accent: #60A5FA;
+      --color-accent-soft: #93C5FD;
+      --color-success: #34D399;
+      --color-warning: #FBBF24;
+      --color-shadow-sm: rgba(0, 0, 0, 0.2);
+      --color-shadow-md: rgba(0, 0, 0, 0.3);
+      --color-shadow-lg: rgba(0, 0, 0, 0.4);
+      
+      /* 设计标准 */
+      --border-radius-sm: 8px;
+      --border-radius-md: 12px;
+      --border-radius-lg: 16px;
+      --border-radius-xl: 20px;
+      --spacing-xs: 0.5rem;
+      --spacing-sm: 0.75rem;
+      --spacing-md: 1rem;
+      --spacing-lg: 1.5rem;
+      --spacing-xl: 2rem;
+      
+      /* 字体系统 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: var(--spacing-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+      background: linear-gradient(135deg, var(--color-bg-gradient-start) 0%, var(--color-bg-gradient-end) 100%);
+      background-attachment: fixed;
+      color: var(--color-text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* 微妙的背景纹理 */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.025em;
+    }
+
+    h2 {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      color: var(--color-text-secondary);
+      font-size: 0.9375rem;
+      line-height: 1.5;
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.2em 0.4em;
+      border-radius: var(--border-radius-sm);
+      font-family: "SF Mono", "Consolas", "Monaco", monospace;
+      font-size: 0.875em;
+      color: var(--color-accent-soft);
+    }
+
+    /* Tab 导航 - Glassmorphism Style */
+    .tab-container {
+      display: flex;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs);
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      box-shadow: 
+        0px 4px 6px -1px var(--color-shadow-sm),
+        0px 2px 4px -2px var(--color-shadow-md);
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tab {
+      flex: 1;
+      padding: var(--spacing-sm) var(--spacing-lg);
+      background: transparent;
+      border: none;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      border-radius: var(--border-radius-md);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      letter-spacing: -0.01em;
+    }
+
+    .tab:hover {
+      color: var(--color-text-primary);
+      background: rgba(96, 165, 250, 0.15);
+    }
+
+    .tab.active {
+      color: var(--color-accent);
+      background: rgba(96, 165, 250, 0.2);
+      box-shadow: 
+        0px 1px 3px 0px var(--color-shadow-sm),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.1);
+    }
+
+    .tab-content {
+      display: none;
+      position: relative;
+      z-index: 1;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 控制面板 - Soft UI Card */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
+      align-items: center;
+      padding: var(--spacing-lg);
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      box-shadow: 
+        0px 4px 6px -1px var(--color-shadow-sm),
+        0px 2px 4px -2px var(--color-shadow-md);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      font-size: 0.875rem;
+      letter-spacing: 0.01em;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--color-text-primary);
+      border-radius: var(--border-radius-md);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      box-shadow: inset 0px 1px 2px var(--color-shadow-sm);
+    }
+
+    input[type="text"] {
+      flex: 1 1 300px;
+    }
+
+    input[type="number"] {
+      width: 6rem;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      background: rgba(15, 23, 42, 0.8);
+      box-shadow: 
+        inset 0px 1px 2px var(--color-shadow-sm),
+        0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--color-text-tertiary);
+    }
+
+    input[type="range"] {
+      flex: 1 1 260px;
+      accent-color: var(--color-accent);
+    }
+
+    /* 按钮 - Soft Elevated Style */
+    button {
+      padding: var(--spacing-sm) var(--spacing-lg);
+      border: none;
+      border-radius: var(--border-radius-md);
+      background: var(--color-accent);
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 
+        0px 4px 6px -1px rgba(59, 130, 246, 0.2),
+        0px 2px 4px -2px rgba(59, 130, 246, 0.15),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+      letter-spacing: -0.01em;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--color-accent-soft);
+      transform: translateY(-1px);
+      box-shadow: 
+        0px 6px 12px -2px rgba(96, 165, 250, 0.4),
+        0px 3px 6px -3px rgba(96, 165, 250, 0.3),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 
+        0px 2px 4px -1px rgba(96, 165, 250, 0.3),
+        0px 1px 2px -1px rgba(96, 165, 250, 0.25),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button.secondary {
+      background: var(--color-text-secondary);
+      box-shadow: 
+        0px 4px 6px -1px rgba(100, 116, 139, 0.4),
+        0px 2px 4px -2px rgba(100, 116, 139, 0.3),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.15);
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: var(--color-text-tertiary);
+    }
+
+    /* 展示标题 - 精致渐变卡片 */
+    .animation-title {
+      text-align: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--color-accent);
+      padding: var(--spacing-xl);
+      background: linear-gradient(135deg, 
+        rgba(30, 41, 59, 0.9) 0%, 
+        rgba(51, 65, 85, 0.7) 100%);
+      backdrop-filter: blur(30px);
+      -webkit-backdrop-filter: blur(30px);
+      border-radius: var(--border-radius-xl);
+      margin-bottom: var(--spacing-md);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 
+        0px 10px 20px -5px var(--color-shadow-md),
+        0px 4px 6px -4px var(--color-shadow-lg),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.1);
+      letter-spacing: -0.02em;
+    }
+
+    /* 播放器容器 */
+    .player {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    .image-stage {
+      position: relative;
+      border-radius: var(--border-radius-xl);
+      overflow: hidden;
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: min(100%, 1024px);
+      margin-inline: auto;
+      min-height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 
+        0px 10px 15px -3px var(--color-shadow-sm),
+        0px 4px 6px -4px var(--color-shadow-md);
+    }
+
+    .image-stage img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .timeline {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--spacing-md);
+      font-size: 0.875rem;
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      box-shadow: 
+        0px 4px 6px -1px var(--color-shadow-sm),
+        0px 2px 4px -2px var(--color-shadow-md);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-bar span {
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+
+    /* 模型列表和图表 */
+    .model-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-lg);
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      box-shadow: 
+        0px 4px 6px -1px var(--color-shadow-sm),
+        0px 2px 4px -2px var(--color-shadow-md);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .model-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs) var(--spacing-md);
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: var(--border-radius-md);
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .model-item:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(96, 165, 250, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0px 2px 4px var(--color-shadow-sm);
+    }
+
+    .model-item.selected {
+      border-color: var(--color-accent);
+      background: rgba(96, 165, 250, 0.15);
+    }
+
+    .model-color {
+      width: 1rem;
+      height: 1rem;
+      border-radius: var(--border-radius-sm);
+    }
+
+    .model-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--color-text-primary);
+    }
+
+    .model-name-input {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: var(--border-radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .model-name-input input {
+      flex: 1;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--color-text-primary);
+      border-radius: var(--border-radius-sm);
+      font-size: 0.9375rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .model-name-input input:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    /* 指标选择器 */
+    .metric-group {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .metric-group-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-text-tertiary);
+      margin-bottom: var(--spacing-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .metric-selector {
+      display: flex;
+      gap: var(--spacing-xs);
+      flex-wrap: wrap;
+    }
+
+    .metric-btn {
+      padding: var(--spacing-xs) var(--spacing-md);
+      font-size: 0.875rem;
+      background: rgba(15, 23, 42, 0.5);
+      color: var(--color-text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius-md);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .metric-btn:hover {
+      background: rgba(30, 41, 59, 0.8);
+      color: var(--color-text-primary);
+      border-color: rgba(96, 165, 250, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .metric-btn.active {
+      background: var(--color-accent);
+      color: white;
+      border-color: var(--color-accent);
+      box-shadow: 
+        0px 2px 4px rgba(96, 165, 250, 0.3),
+        inset 0px 1px 0px rgba(255, 255, 255, 0.2);
+    }
+
+    /* 图表容器 */
+    .chart-section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    .chart-container {
+      position: relative;
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius-xl);
+      padding: var(--spacing-xl);
+      max-width: 100%;
+      box-shadow: 
+        0px 10px 15px -3px var(--color-shadow-sm),
+        0px 4px 6px -4px var(--color-shadow-md);
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+    }
+
+    /* 统计卡片 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--spacing-md);
+      margin-top: var(--spacing-lg);
+    }
+
+    .stat-card {
+      padding: var(--spacing-lg);
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-lg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 
+        0px 4px 6px -1px var(--color-shadow-sm),
+        0px 2px 4px -2px var(--color-shadow-md);
+      transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        0px 6px 12px -2px var(--color-shadow-md),
+        0px 3px 6px -3px var(--color-shadow-lg);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--color-text-secondary);
+      margin-bottom: var(--spacing-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--color-accent);
+    }
+
+    /* 占位符 */
+    .placeholder {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      color: var(--color-text-secondary);
+      font-size: 1rem;
+      background: var(--color-container-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: var(--border-radius-xl);
+      border: 2px dashed rgba(96, 165, 250, 0.3);
+    }
+
+    .placeholder p {
+      margin: var(--spacing-sm) 0;
+    }
+
+    footer {
+      margin-top: auto;
+      text-align: center;
+      color: var(--color-text-tertiary);
+      font-size: 0.875rem;
+      padding-top: var(--spacing-xl);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🚀 PINN Checkpoint 分析与可视化</h1>
+    <p>分析由 <code>compare_architectures.py</code> 生成的训练数据，可视化训练过程和性能指标。</p>
+  </header>
+
+  <div class="tab-container">
+    <button class="tab active" data-tab="animation">🎬 图像动画</button>
+    <button class="tab" data-tab="metrics">📊 训练曲线</button>
+  </div>
+
+  <!-- Tab 1: 图像动画 -->
+  <div class="tab-content active" id="animation">
+    <h2>Checkpoint 图像动画</h2>
+    
+    <div class="controls">
+      <label for="animationTitle">展示标题：</label>
+      <input id="animationTitle" type="text" placeholder="输入展示标题（如：DNN 架构训练过程）" />
+    </div>
+
+    <div class="controls">
+      <label for="folder">选择图像文件夹：</label>
+      <input id="folder" type="file" webkitdirectory directory multiple />
+      <label for="interval">播放速度 (毫秒/帧)：</label>
+      <input id="interval" type="number" value="800" min="100" step="100" />
+    </div>
+
+    <section class="player">
+      <div id="animationTitleDisplay" class="animation-title" style="display: none;"></div>
+
+      <div class="image-stage">
+        <img id="frame" alt="等待加载图像…" />
+      </div>
+
+      <div class="timeline">
+        <button id="play" disabled>▶ 播放</button>
+        <input id="slider" type="range" min="0" max="0" value="0" disabled />
+      </div>
+
+      <div class="info-bar">
+        <span id="status">尚未加载任何图片</span>
+        <span id="filename"></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- Tab 2: 训练曲线 -->
+  <div class="tab-content" id="metrics">
+    <h2>训练指标可视化</h2>
+    
+    <div class="controls">
+      <label for="csvFiles">选择训练历史 CSV 文件：</label>
+      <input id="csvFiles" type="file" accept=".csv" multiple />
+      <button id="clearData" class="secondary">清空数据</button>
+    </div>
+
+    <div id="modelNameInputs" style="display: none; margin-top: var(--spacing-lg);"></div>
+
+    <div id="modelList" class="model-list" style="display: none;"></div>
+
+    <div id="metricSelector" style="display: none;">
+      <div class="metric-group">
+        <div class="metric-group-title">📊 评估指标 (Evaluation Metrics)</div>
+        <div class="metric-selector">
+          <button class="metric-btn active" data-metric="mse">MSE</button>
+          <button class="metric-btn" data-metric="mae">MAE</button>
+          <button class="metric-btn" data-metric="max_abs_error">Max Abs Error</button>
+          <button class="metric-btn" data-metric="relative_l2">Relative L2</button>
+        </div>
+      </div>
+      
+      <div class="metric-group">
+        <div class="metric-group-title">🔥 训练损失 (Training Losses)</div>
+        <div class="metric-selector">
+          <button class="metric-btn" data-metric="train_total">Total Loss</button>
+          <button class="metric-btn" data-metric="train_pde">PDE Loss</button>
+          <button class="metric-btn" data-metric="train_boundary">Boundary Loss</button>
+          <button class="metric-btn" data-metric="train_initial">Initial Loss</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-container">
+        <div class="chart-wrapper">
+          <canvas id="lossChart"></canvas>
+        </div>
+      </div>
+
+      <div id="statsGrid" class="stats-grid" style="display: none;"></div>
+    </div>
+
+    <div id="chartPlaceholder" class="placeholder">
+      <p>📁 请选择一个或多个训练数据 CSV 文件</p>
+      <p style="font-size: 0.875rem; margin-top: var(--spacing-xs);">
+        文件格式：<code>checkpoint,epoch,mse,mae,max_abs_error,relative_l2,train_total,train_pde,train_boundary,train_initial</code>
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    <p>PINN Checkpoint Analysis Tool | Powered by Chart.js | Soft Glassmorphism Design</p>
+  </footer>
+
+  <script>
+    // ======================================================================
+    // Tab 切换逻辑
+    // ======================================================================
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+        
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(tc => tc.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(targetTab).classList.add('active');
+      });
+    });
+
+    // ======================================================================
+    // Tab 1: 图像动画逻辑
+    // ======================================================================
+    const folderInput = document.getElementById('folder');
+    const slider = document.getElementById('slider');
+    const playBtn = document.getElementById('play');
+    const frameImg = document.getElementById('frame');
+    const statusLabel = document.getElementById('status');
+    const filenameLabel = document.getElementById('filename');
+    const intervalInput = document.getElementById('interval');
+    const animationTitleInput = document.getElementById('animationTitle');
+    const animationTitleDisplay = document.getElementById('animationTitleDisplay');
+
+    let frames = [];
+    let timer = null;
+    let currentIndex = 0;
+
+    // 更新展示标题
+    animationTitleInput.addEventListener('input', (event) => {
+      const title = event.target.value.trim();
+      if (title) {
+        animationTitleDisplay.textContent = title;
+        animationTitleDisplay.style.display = 'block';
+      } else {
+        animationTitleDisplay.style.display = 'none';
+      }
+    });
+
+    function resetPlayer() {
+      frames = [];
+      currentIndex = 0;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      slider.disabled = true;
+      playBtn.disabled = true;
+      playBtn.textContent = '▶ 播放';
+      slider.value = '0';
+      slider.max = '0';
+      frameImg.src = '';
+      frameImg.alt = '等待加载图像…';
+      statusLabel.textContent = '尚未加载任何图片';
+      filenameLabel.textContent = '';
+    }
+
+    function sortFrames(fileList) {
+      return Array.from(fileList)
+        .filter(file => file.type.startsWith('image/'))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    }
+
+    function showFrame(index) {
+      if (frames.length === 0) return;
+      const file = frames[index];
+      const url = URL.createObjectURL(file);
+      frameImg.src = url;
+      frameImg.onload = () => URL.revokeObjectURL(url);
+      slider.value = String(index);
+      statusLabel.textContent = `帧 ${index + 1} / ${frames.length}`;
+      filenameLabel.textContent = file.name;
+    }
+
+    function togglePlay() {
+      if (frames.length === 0) return;
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+        playBtn.textContent = '▶ 播放';
+      } else {
+        const interval = Math.max(100, Number(intervalInput.value) || 800);
+        timer = setInterval(() => {
+          currentIndex = (currentIndex + 1) % frames.length;
+          showFrame(currentIndex);
+        }, interval);
+        playBtn.textContent = '⏸ 暂停';
+      }
+    }
+
+    folderInput.addEventListener('change', (event) => {
+      resetPlayer();
+      const fileList = event.target.files;
+      if (!fileList || fileList.length === 0) {
+        statusLabel.textContent = '未选择任何文件';
+        return;
+      }
+
+      frames = sortFrames(fileList);
+      if (frames.length === 0) {
+        statusLabel.textContent = '所选文件夹内不包含图像文件';
+        return;
+      }
+
+      slider.disabled = false;
+      slider.max = String(frames.length - 1);
+      slider.value = '0';
+      playBtn.disabled = false;
+
+      statusLabel.textContent = `已加载 ${frames.length} 张图片`;
+      showFrame(0);
+    });
+
+    slider.addEventListener('input', (event) => {
+      if (frames.length === 0) return;
+      currentIndex = Number(event.target.value);
+      showFrame(currentIndex);
+    });
+
+    playBtn.addEventListener('click', togglePlay);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && timer) {
+        togglePlay();
+      }
+    });
+
+    // ======================================================================
+    // Tab 2: 训练曲线逻辑
+    // ======================================================================
+    const csvFilesInput = document.getElementById('csvFiles');
+    const clearDataBtn = document.getElementById('clearData');
+    const modelListDiv = document.getElementById('modelList');
+    const modelNameInputsDiv = document.getElementById('modelNameInputs');
+    const chartPlaceholder = document.getElementById('chartPlaceholder');
+    const statsGrid = document.getElementById('statsGrid');
+    const metricSelector = document.getElementById('metricSelector');
+
+    // 颜色方案 - Soft UI Palette
+    const modelColors = [
+      '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
+      '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
+    ];
+
+    let modelsData = [];
+    let currentMetric = 'mse';
+    let chartInstance = null;
+    let pendingFiles = [];
+
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      if (lines.length < 2) return null;
+      
+      const headers = lines[0].split(',').map(h => h.trim());
+      const data = {};
+      
+      const allMetrics = ['checkpoint', 'epoch', 'mse', 'mae', 'max_abs_error', 'relative_l2', 
+                          'train_total', 'train_pde', 'train_boundary', 'train_initial',
+                          'total', 'pde', 'boundary', 'initial'];
+      allMetrics.forEach(metric => {
+        data[metric] = [];
+      });
+
+      const columnMap = {};
+      headers.forEach((header, idx) => {
+        const normalized = header.toLowerCase().trim();
+        columnMap[normalized] = idx;
+        
+        if (normalized === 'total' && !headers.includes('train_total')) {
+          columnMap['train_total'] = idx;
+        }
+        if (normalized === 'pde' && !headers.includes('train_pde')) {
+          columnMap['train_pde'] = idx;
+        }
+        if (normalized === 'boundary' && !headers.includes('train_boundary')) {
+          columnMap['train_boundary'] = idx;
+        }
+        if (normalized === 'initial' && !headers.includes('train_initial')) {
+          columnMap['train_initial'] = idx;
+        }
+      });
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        if (values.length < headers.length) continue;
+
+        for (const metric of allMetrics) {
+          if (columnMap.hasOwnProperty(metric)) {
+            const value = parseFloat(values[columnMap[metric]]);
+            if (!isNaN(value)) {
+              data[metric].push(value);
+            }
+          }
+        }
+        
+        if (!columnMap.hasOwnProperty('epoch')) {
+          data.epoch.push(i);
+        }
+      }
+
+      return data;
+    }
+
+    function extractModelName(filename) {
+      const match = filename.match(/([^\/\\]+)[\/\\]?[^\/\\]*\.csv$/i);
+      if (match) {
+        let name = match[1];
+        name = name.replace(/training_history|checkpoint_analysis|results?/gi, '').trim();
+        if (name && name !== '.') return name;
+      }
+      return null;
+    }
+
+    function showModelNameInputs() {
+      if (pendingFiles.length === 0) {
+        modelNameInputsDiv.style.display = 'none';
+        return;
+      }
+
+      modelNameInputsDiv.style.display = 'block';
+      modelNameInputsDiv.innerHTML = '<h3 style="margin: 0 0 var(--spacing-md) 0; color: var(--color-accent); font-size: 1.125rem;">为每个模型设置名称</h3>';
+
+      pendingFiles.forEach((file, idx) => {
+        const defaultName = extractModelName(file.name) || `Model ${modelsData.length + idx + 1}`;
+        const inputDiv = document.createElement('div');
+        inputDiv.className = 'model-name-input';
+        inputDiv.innerHTML = `
+          <div class="model-color" style="width: 1.5rem; height: 1.5rem; border-radius: var(--border-radius-sm); background: ${modelColors[(modelsData.length + idx) % modelColors.length]}"></div>
+          <strong style="min-width: 90px; color: var(--color-text-secondary); font-size: 0.875rem;">文件 ${idx + 1}:</strong>
+          <input type="text" value="${defaultName}" data-file-index="${idx}" 
+                 placeholder="输入模型名称" />
+          <span style="font-size: 0.8125rem; color: var(--color-text-tertiary); min-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${file.name}</span>
+        `;
+        modelNameInputsDiv.appendChild(inputDiv);
+      });
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.textContent = '✅ 确认并加载';
+      confirmBtn.style.marginTop = 'var(--spacing-md)';
+      confirmBtn.onclick = () => {
+        const inputs = modelNameInputsDiv.querySelectorAll('input[type="text"]');
+        inputs.forEach((input, idx) => {
+          const customName = input.value.trim() || `Model ${modelsData.length + idx + 1}`;
+          processFile(pendingFiles[idx], customName, modelsData.length + idx);
+        });
+        pendingFiles = [];
+        modelNameInputsDiv.style.display = 'none';
+      };
+      modelNameInputsDiv.appendChild(confirmBtn);
+    }
+
+    function processFile(file, modelName, colorIndex) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csvData = parseCSV(e.target.result);
+        if (!csvData) {
+          alert(`无法解析文件: ${file.name}`);
+          return;
+        }
+
+        const color = modelColors[colorIndex % modelColors.length];
+
+        modelsData.push({
+          name: modelName,
+          color: color,
+          data: csvData,
+          selected: true,
+          file: file
+        });
+
+        updateModelList();
+        updateChart();
+        updateStats();
+        
+        chartPlaceholder.style.display = 'none';
+        modelListDiv.style.display = 'flex';
+        statsGrid.style.display = 'grid';
+        metricSelector.style.display = 'block';
+      };
+      reader.readAsText(file);
+    }
+
+    function updateModelList() {
+      modelListDiv.innerHTML = '';
+      modelsData.forEach((model, idx) => {
+        const item = document.createElement('div');
+        item.className = `model-item ${model.selected ? 'selected' : ''}`;
+        item.innerHTML = `
+          <div class="model-color" style="background: ${model.color}"></div>
+          <span class="model-name">${model.name}</span>
+        `;
+        item.addEventListener('click', () => {
+          model.selected = !model.selected;
+          item.classList.toggle('selected');
+          updateChart();
+          updateStats();
+        });
+        modelListDiv.appendChild(item);
+      });
+    }
+
+    function updateChart() {
+      const canvas = document.getElementById('lossChart');
+      const ctx = canvas.getContext('2d');
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const selectedModels = modelsData.filter(m => m.selected);
+      if (selectedModels.length === 0) return;
+
+      const hasData = selectedModels.some(m => m.data[currentMetric] && m.data[currentMetric].length > 0);
+      if (!hasData) {
+        const availableMetrics = ['mse', 'mae', 'max_abs_error', 'relative_l2', 'train_total', 'train_pde', 'train_boundary', 'train_initial'];
+        for (const metric of availableMetrics) {
+          if (selectedModels.some(m => m.data[metric] && m.data[metric].length > 0)) {
+            currentMetric = metric;
+            document.querySelectorAll('.metric-btn').forEach(btn => {
+              btn.classList.toggle('active', btn.dataset.metric === metric);
+            });
+            break;
+          }
+        }
+      }
+
+      const datasets = selectedModels
+        .filter(m => m.data[currentMetric] && m.data[currentMetric].length > 0)
+        .map(model => ({
+          label: model.name,
+          data: model.data[currentMetric],
+          borderColor: model.color,
+          backgroundColor: model.color + '20',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: model.color,
+          pointHoverBorderColor: '#FFFFFF',
+          pointHoverBorderWidth: 2,
+          tension: 0.3
+        }));
+
+      const metricLabels = {
+        mse: 'Mean Squared Error (MSE)',
+        mae: 'Mean Absolute Error (MAE)',
+        max_abs_error: 'Maximum Absolute Error',
+        relative_l2: 'Relative L2 Error',
+        train_total: 'Total Training Loss',
+        train_pde: 'PDE Loss',
+        train_boundary: 'Boundary Loss',
+        train_initial: 'Initial Condition Loss'
+      };
+
+      let epochData = [];
+      for (const model of selectedModels) {
+        if (model.data.epoch && model.data.epoch.length > 0) {
+          epochData = model.data.epoch;
+          break;
+        }
+      }
+      if (epochData.length === 0) {
+        epochData = Array.from({length: datasets[0]?.data.length || 0}, (_, i) => i + 1);
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: epochData,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                color: '#F1F5F9',
+                font: {
+                  size: 13,
+                  weight: '600',
+                  family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+                },
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 16,
+                boxWidth: 8,
+                boxHeight: 8
+              }
+            },
+            title: {
+              display: true,
+              text: metricLabels[currentMetric] || currentMetric,
+              color: '#60A5FA',
+              font: {
+                size: 16,
+                weight: '700',
+                family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+              },
+              padding: {
+                top: 0,
+                bottom: 20
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(30, 41, 59, 0.95)',
+              titleColor: '#F1F5F9',
+              bodyColor: '#94A3B8',
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              borderWidth: 1,
+              padding: 12,
+              boxPadding: 6,
+              usePointStyle: true,
+              callbacks: {
+                label: function(context) {
+                  const value = context.parsed.y;
+                  if (Math.abs(value) < 0.01 || Math.abs(value) > 1000) {
+                    return `${context.dataset.label}: ${value.toExponential(4)}`;
+                  }
+                  return `${context.dataset.label}: ${value.toFixed(6)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Epoch',
+                color: '#94A3B8',
+                font: { size: 13, weight: '600' }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.08)',
+                drawTicks: false
+              },
+              ticks: {
+                color: '#94A3B8',
+                padding: 8,
+                font: { size: 12 }
+              },
+              border: {
+                display: false
+              }
+            },
+            y: {
+              type: 'logarithmic',
+              title: {
+                display: true,
+                text: 'Value (log scale)',
+                color: '#94A3B8',
+                font: { size: 13, weight: '600' }
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.08)',
+                drawTicks: false
+              },
+              ticks: {
+                color: '#94A3B8',
+                padding: 8,
+                font: { size: 12 },
+                callback: function(value) {
+                  return value.toExponential(1);
+                }
+              },
+              border: {
+                display: false
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateStats() {
+      statsGrid.innerHTML = '';
+      
+      const selectedModels = modelsData.filter(m => m.selected);
+      if (selectedModels.length === 0) return;
+
+      selectedModels.forEach(model => {
+        const data = model.data[currentMetric];
+        if (!data || data.length === 0) return;
+
+        const finalValue = data[data.length - 1];
+        const minValue = Math.min(...data);
+        const avgValue = data.reduce((a, b) => a + b, 0) / data.length;
+        const minEpoch = data.indexOf(minValue) + 1;
+
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.style.borderLeft = `4px solid ${model.color}`;
+        card.innerHTML = `
+          <div style="font-weight: 700; margin-bottom: var(--spacing-md); color: ${model.color}; font-size: 1rem;">${model.name}</div>
+          <div style="display: grid; gap: var(--spacing-sm);">
+            <div>
+              <div class="stat-label">Final Value</div>
+              <div class="stat-value" style="font-size: 1.25rem;">${finalValue < 0.01 ? finalValue.toExponential(4) : finalValue.toFixed(6)}</div>
+            </div>
+            <div>
+              <div class="stat-label">Best (Epoch ${minEpoch})</div>
+              <div style="font-size: 0.9375rem; color: var(--color-success); font-weight: 600;">${minValue < 0.01 ? minValue.toExponential(4) : minValue.toFixed(6)}</div>
+            </div>
+            <div>
+              <div class="stat-label">Average</div>
+              <div style="font-size: 0.9375rem; color: var(--color-text-secondary); font-weight: 600;">${avgValue < 0.01 ? avgValue.toExponential(4) : avgValue.toFixed(6)}</div>
+            </div>
+          </div>
+        `;
+        statsGrid.appendChild(card);
+      });
+    }
+
+    csvFilesInput.addEventListener('change', (event) => {
+      const files = Array.from(event.target.files);
+      if (files.length === 0) return;
+
+      pendingFiles = files.filter(f => f.name.toLowerCase().endsWith('.csv'));
+      showModelNameInputs();
+
+      event.target.value = '';
+    });
+
+    clearDataBtn.addEventListener('click', () => {
+      if (modelsData.length === 0) return;
+      if (!confirm('确定要清空所有数据吗？')) return;
+
+      modelsData = [];
+      pendingFiles = [];
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+      modelListDiv.style.display = 'none';
+      modelNameInputsDiv.style.display = 'none';
+      statsGrid.style.display = 'none';
+      metricSelector.style.display = 'none';
+      chartPlaceholder.style.display = 'block';
+    });
+
+    // 指标切换
+    document.addEventListener('click', (event) => {
+      if (event.target.classList.contains('metric-btn')) {
+        document.querySelectorAll('.metric-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        currentMetric = event.target.dataset.metric;
+        updateChart();
+        updateStats();
+      }
+    });
+  </script>
+</body>
+</html>
