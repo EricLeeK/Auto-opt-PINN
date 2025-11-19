@@ -20,6 +20,24 @@ class KANLayer(nn.Module):
     carries learnable affine normalisation per input dimension, spline coefficients,
     and a residual linear skip so that the network can emulate both KAN-style basis
     aggregation and plain linear layers when beneficial.
+
+    Parameters:
+        in_features (int): The number of input features to the layer.
+        width (int): The number of output features from the layer.
+        grid_points (int): The number of control points for the B-spline basis.
+        spline_order (int): The order of the B-spline basis.
+
+    Attributes:
+        input_shift (nn.Parameter): Learnable affine shift parameters for each input feature.
+        input_log_scale (nn.Parameter): Learnable affine log scale parameters for each input feature.
+        spline_coeffs (nn.Parameter): Learnable spline coefficients for each input feature.
+        bias (nn.Parameter): Learnable bias for the output features.
+        skip_linear (nn.Linear): Residual linear skip that helps when spline expansion is unnecessary.
+        layer_norm (nn.LayerNorm): Normalisation layer for the output features.
+        activation (nn.GELU): Activation function for the output features.
+
+    Methods:
+        forward (inputs: torch.Tensor) -> torch.Tensor: Forward pass through the layer.
     """
 
     def __init__(self, in_features: int, width: int, grid_points: int, spline_order: int) -> None:
@@ -126,8 +144,24 @@ class KANLayer(nn.Module):
 
 
 class AttentionLayer(nn.Module):
-    """Feature attention block with head-wise gating for vector inputs."""
+    """
+    Feature attention block with head-wise gating for vector inputs.
 
+    Parameters:
+        in_features (int): The number of input features to the layer.
+        embed_dim (int): The number of features to embed the input into.
+        heads (int): The number of attention heads to use.
+
+    Attributes:
+        query (nn.Linear): Query linear layer.
+        key (nn.Linear): Key linear layer.
+        value (nn.Linear): Value linear layer.
+        skip (nn.Linear): Linear layer for skip connection.
+        out_proj (nn.Sequential): Output linear layer with LayerNorm and GELU activation.
+
+    Methods:
+        forward (inputs: torch.Tensor) -> torch.Tensor: Forward pass through the layer.
+    """
     def __init__(self, in_features: int, embed_dim: int, heads: int) -> None:
         super().__init__()
         if embed_dim % heads != 0:
@@ -155,6 +189,16 @@ class AttentionLayer(nn.Module):
 
 
 def _build_layer(gene: LayerGene, in_features: int) -> Tuple[nn.Module, int]:
+    """
+    Build a layer based on the given gene.
+
+    Parameters:
+        gene (LayerGene): The gene to build the layer from.
+        in_features (int): The number of input features to the layer.
+
+    Returns:
+        Tuple[nn.Module, int]: The built layer and the number of output features.
+    """
     if gene.layer_type == LayerType.DNN:
         units = gene.params["units"]
         block = nn.Sequential(nn.Linear(in_features, units), nn.Tanh())
@@ -170,7 +214,16 @@ def _build_layer(gene: LayerGene, in_features: int) -> Tuple[nn.Module, int]:
 
 
 class HybridPINN(nn.Module):
-    """Sequential hybrid PINN assembled from a gene description."""
+    """
+    Sequential hybrid PINN assembled from a gene description.
+
+    Parameters:
+        genes (Gene): The gene to build the model from.
+        input_dim (int): The number of input features to the model.
+
+    Attributes:
+        model (nn.Sequential): The built model.
+    """
 
     def __init__(self, genes: Gene, input_dim: int = 2) -> None:
         super().__init__()
