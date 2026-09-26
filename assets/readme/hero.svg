@@ -1,38 +1,100 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
   <title id="title">Auto-opt-PINN</title>
-  <desc id="desc">Search hybrid PINN architectures with a genetic algorithm, then inspect the experiment records. The diagram is a conceptual illustration, not a benchmark or application screenshot.</desc>
+  <desc id="desc">DNN、KAN 与 Attention 层组成架构基因；高亮变异位置，说明候选结构的搜索过程。</desc>
   <defs>
-    <clipPath id="frame">
-      <rect width="1200" height="440" rx="24" />
+    <clipPath id="canvas">
+      <rect width="1200" height="630" rx="26" />
     </clipPath>
   </defs>
-  <g clip-path="url(#frame)">
-    <rect x="0" y="0" width="1200" height="440" rx="24" fill="#252a29" />
-    <text x="60" y="72" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">GENETIC ARCHITECTURE SEARCH</text>
-    <text x="60" y="166" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="76" font-weight="700" fill="#f2f2e9" text-anchor="start">Auto-opt</text>
-    <text x="60" y="246" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="76" font-weight="700" fill="#f2f2e9" text-anchor="start">PINN</text>
-    <text x="60" y="300" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="26" font-weight="400" fill="#f2f2e9" text-anchor="start">Explore the architecture.</text>
-    <text x="60" y="335" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="26" font-weight="400" fill="#f2f2e9" text-anchor="start">Keep the experiment trace.</text>
-    <text x="60" y="400" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">DNN + KAN + ATTENTION  /  BURGERS EQUATION</text>
-    <text x="690" y="72" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">MODEL GENES</text>
-    <g id="gene-0">
-      <rect x="690" y="117" width="96" height="67" rx="6" fill="#444a42" />
-      <text x="738.0" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#f2f2e9" text-anchor="middle">DNN</text>
+  <g clip-path="url(#canvas)">
+    <rect x="0" y="0" width="1200" height="630" rx="0" fill="#172B2B" />
+    <text x="48" y="44" font-family="Menlo, Consolas, monospace" font-size="18" font-weight="600" fill="#B5D8A4">NEURAL ARCHITECTURE SEARCH / PINN</text>
+    <text x="45" y="120" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="72" font-weight="600" fill="#EAF1DE">Auto-opt-PINN</text>
+    <text x="50" y="167" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="29" font-weight="400" fill="#AAC3B1">把网络结构写成基因，再搜索它们的组合。</text>
+    <path d="M48 197 H1150" fill="none" stroke="#41564E" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="56" y="238" font-family="Menlo, Consolas, monospace" font-size="29" font-weight="600" fill="#B5D8A4">DNN</text>
+    <path d="M96 276 L168 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 276 L168 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 276 L168 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="96" cy="276" r="7" fill="#B5D8A4" />
+    <path d="M96 306 L168 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 306 L168 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 306 L168 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="96" cy="306" r="7" fill="#B5D8A4" />
+    <path d="M96 336 L168 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 336 L168 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M96 336 L168 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="96" cy="336" r="7" fill="#B5D8A4" />
+    <path d="M168 276 L240 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 276 L240 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 276 L240 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="168" cy="276" r="7" fill="#B5D8A4" />
+    <path d="M168 306 L240 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 306 L240 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 306 L240 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="168" cy="306" r="7" fill="#B5D8A4" />
+    <path d="M168 336 L240 276" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 336 L240 306" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M168 336 L240 336" fill="none" stroke="#587263" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="168" cy="336" r="7" fill="#B5D8A4" />
+    <circle cx="240" cy="276" r="7" fill="#B5D8A4" />
+    <circle cx="240" cy="306" r="7" fill="#B5D8A4" />
+    <circle cx="240" cy="336" r="7" fill="#B5D8A4" />
+    <text x="431" y="238" font-family="Menlo, Consolas, monospace" font-size="29" font-weight="600" fill="#E3BD79">KAN</text>
+    <path d="M451.00 287.00 L453.31 286.25 L455.62 285.50 L457.93 284.75 L460.24 284.02 L462.55 283.29 L464.86 282.58 L467.17 281.89 L469.48 281.22 L471.79 280.57 L474.10 279.95 L476.41 279.35 L478.72 278.79 L481.03 278.25 L483.34 277.75 L485.65 277.29 L487.96 276.87 L490.27 276.48 L492.58 276.14 L494.89 275.84 L497.20 275.59 L499.51 275.38 L501.82 275.21 L504.13 275.09 L506.44 275.02 L508.75 275.00 L511.06 275.02 L513.37 275.09 L515.68 275.21 L517.99 275.38 L520.30 275.59 L522.61 275.84 L524.92 276.14 L527.23 276.48 L529.54 276.87 L531.85 277.29 L534.16 277.75 L536.47 278.25 L538.78 278.79 L541.09 279.35 L543.40 279.95 L545.71 280.57 L548.02 281.22 L550.33 281.89 L552.64 282.58 L554.95 283.29 L557.26 284.02 L559.57 284.75 L561.88 285.50 L564.19 286.25 L566.50 287.00 L568.81 287.75 L571.12 288.50 L573.43 289.25 L575.74 289.98 L578.05 290.71 L580.36 291.42 L582.67 292.11 L584.98 292.78 L587.29 293.43 L589.60 294.05 L591.91 294.65 L594.22 295.21 L596.53 295.75 L598.84 296.25 L601.15 296.71 L603.46 297.13 L605.77 297.52 L608.08 297.86 L610.39 298.16 L612.70 298.41 L615.01 298.62 L617.32 298.79 L619.63 298.91 L621.94 298.98 L624.25 299.00 L626.56 298.98 L628.87 298.91 L631.18 298.79 L633.49 298.62 L635.80 298.41 L638.11 298.16 L640.42 297.86 L642.73 297.52 L645.04 297.13 L647.35 296.71 L649.66 296.25 L651.97 295.75 L654.28 295.21 L656.59 294.65 L658.90 294.05 L661.21 293.43 L663.52 292.78 L665.83 292.11 L668.14 291.42 L670.45 290.71 L672.76 289.98 L675.07 289.25 L677.38 288.50 L679.69 287.75 L682.00 287.00" fill="none" stroke="#E3BD79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M451.00 300.90 L453.31 300.52 L455.62 300.17 L457.93 299.87 L460.24 299.61 L462.55 299.39 L464.86 299.22 L467.17 299.10 L469.48 299.03 L471.79 299.00 L474.10 299.02 L476.41 299.09 L478.72 299.20 L481.03 299.36 L483.34 299.57 L485.65 299.82 L487.96 300.12 L490.27 300.45 L492.58 300.83 L494.89 301.25 L497.20 301.71 L499.51 302.21 L501.82 302.74 L504.13 303.30 L506.44 303.90 L508.75 304.52 L511.06 305.16 L513.37 305.83 L515.68 306.52 L517.99 307.23 L520.30 307.95 L522.61 308.69 L524.92 309.43 L527.23 310.18 L529.54 310.94 L531.85 311.69 L534.16 312.44 L536.47 313.19 L538.78 313.92 L541.09 314.65 L543.40 315.36 L545.71 316.05 L548.02 316.73 L550.33 317.38 L552.64 318.00 L554.95 318.60 L557.26 319.17 L559.57 319.70 L561.88 320.21 L564.19 320.67 L566.50 321.10 L568.81 321.48 L571.12 321.83 L573.43 322.13 L575.74 322.39 L578.05 322.61 L580.36 322.78 L582.67 322.90 L584.98 322.97 L587.29 323.00 L589.60 322.98 L591.91 322.91 L594.22 322.80 L596.53 322.64 L598.84 322.43 L601.15 322.18 L603.46 321.88 L605.77 321.55 L608.08 321.17 L610.39 320.75 L612.70 320.29 L615.01 319.79 L617.32 319.26 L619.63 318.70 L621.94 318.10 L624.25 317.48 L626.56 316.84 L628.87 316.17 L631.18 315.48 L633.49 314.77 L635.80 314.05 L638.11 313.31 L640.42 312.57 L642.73 311.82 L645.04 311.06 L647.35 310.31 L649.66 309.56 L651.97 308.81 L654.28 308.08 L656.59 307.35 L658.90 306.64 L661.21 305.95 L663.52 305.27 L665.83 304.62 L668.14 304.00 L670.45 303.40 L672.76 302.83 L675.07 302.30 L677.38 301.79 L679.69 301.33 L682.00 300.90" fill="none" stroke="#E3BD79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M451.00 324.09 L453.31 324.42 L455.62 324.80 L457.93 325.22 L460.24 325.67 L462.55 326.17 L464.86 326.69 L467.17 327.25 L469.48 327.84 L471.79 328.46 L474.10 329.11 L476.41 329.78 L478.72 330.46 L481.03 331.17 L483.34 331.89 L485.65 332.63 L487.96 333.37 L490.27 334.12 L492.58 334.87 L494.89 335.63 L497.20 336.38 L499.51 337.12 L501.82 337.86 L504.13 338.59 L506.44 339.30 L508.75 339.99 L511.06 340.67 L513.37 341.32 L515.68 341.95 L517.99 342.55 L520.30 343.12 L522.61 343.66 L524.92 344.16 L527.23 344.63 L529.54 345.06 L531.85 345.45 L534.16 345.80 L536.47 346.11 L538.78 346.37 L541.09 346.59 L543.40 346.76 L545.71 346.89 L548.02 346.97 L550.33 347.00 L552.64 346.98 L554.95 346.92 L557.26 346.81 L559.57 346.65 L561.88 346.45 L564.19 346.20 L566.50 345.91 L568.81 345.58 L571.12 345.20 L573.43 344.78 L575.74 344.33 L578.05 343.83 L580.36 343.31 L582.67 342.75 L584.98 342.16 L587.29 341.54 L589.60 340.89 L591.91 340.22 L594.22 339.54 L596.53 338.83 L598.84 338.11 L601.15 337.37 L603.46 336.63 L605.77 335.88 L608.08 335.13 L610.39 334.37 L612.70 333.62 L615.01 332.88 L617.32 332.14 L619.63 331.41 L621.94 330.70 L624.25 330.01 L626.56 329.33 L628.87 328.68 L631.18 328.05 L633.49 327.45 L635.80 326.88 L638.11 326.34 L640.42 325.84 L642.73 325.37 L645.04 324.94 L647.35 324.55 L649.66 324.20 L651.97 323.89 L654.28 323.63 L656.59 323.41 L658.90 323.24 L661.21 323.11 L663.52 323.03 L665.83 323.00 L668.14 323.02 L670.45 323.08 L672.76 323.19 L675.07 323.35 L677.38 323.55 L679.69 323.80 L682.00 324.09" fill="none" stroke="#E3BD79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="806" y="238" font-family="Menlo, Consolas, monospace" font-size="29" font-weight="600" fill="#99C6D6">Attention</text>
+    <rect x="828" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="857" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.90" />
+    <rect x="886" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="915" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="944" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.22" />
+    <rect x="973" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.19" />
+    <rect x="1002" y="267" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.18" />
+    <rect x="828" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="857" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="886" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.90" />
+    <rect x="915" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="944" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="973" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.22" />
+    <rect x="1002" y="289" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.19" />
+    <rect x="828" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.22" />
+    <rect x="857" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="886" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="915" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.90" />
+    <rect x="944" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="973" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="1002" y="311" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.22" />
+    <rect x="828" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.19" />
+    <rect x="857" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.22" />
+    <rect x="886" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <rect x="915" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="944" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.90" />
+    <rect x="973" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.71" />
+    <rect x="1002" y="333" width="22" height="15" rx="2" fill="#99C6D6" opacity="0.39" />
+    <path d="M48 369 H1150" fill="none" stroke="#41564E" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="57" y="411" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="22" font-weight="400" fill="#AAC3B1">基因序列</text>
+    <text x="57" y="446" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="18" font-weight="400" fill="#829D8C">组合示意</text>
+    <rect x="215" y="395" width="183" height="68" rx="4" fill="#223B36" stroke="#B5D8A4" stroke-width="1.2" />
+    <text x="306" y="437" font-family="Menlo, Consolas, monospace" font-size="24" font-weight="500" fill="#B5D8A4" text-anchor="middle">DNN</text>
+    <path d="M398 429 H420" fill="none" stroke="#AAC3B1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="423" y="395" width="183" height="68" rx="4" fill="#223B36" stroke="#E3BD79" stroke-width="1.2" />
+    <text x="514" y="437" font-family="Menlo, Consolas, monospace" font-size="24" font-weight="500" fill="#E3BD79" text-anchor="middle">KAN</text>
+    <path d="M606 429 H628" fill="none" stroke="#AAC3B1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="631" y="395" width="183" height="68" rx="4" fill="#223B36" stroke="#99C6D6" stroke-width="1.2" />
+    <text x="722" y="437" font-family="Menlo, Consolas, monospace" font-size="24" font-weight="500" fill="#99C6D6" text-anchor="middle">Attention</text>
+    <path d="M814 429 H836" fill="none" stroke="#AAC3B1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <rect x="839" y="395" width="183" height="68" rx="4" fill="#223B36" stroke="#B5D8A4" stroke-width="1.2" />
+    <text x="930" y="437" font-family="Menlo, Consolas, monospace" font-size="24" font-weight="500" fill="#B5D8A4" text-anchor="middle">DNN</text>
+    <text x="53" y="553" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="25" font-weight="400" fill="#EAF1DE">表示架构  →  训练候选  →  评估适应度  →  选择与变异</text>
+    <text x="53" y="592" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="18" font-weight="400" fill="#AAC3B1">DNN · KAN · Attention / 搜索结构示意，不代表已取得最优性能</text>
+    <g id="mutation-site">
+      <path d="M426 385 H600 M426 473 H600" fill="none" stroke="#E3BD79" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="470" y="508" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans, sans-serif" font-size="20" font-weight="400" fill="#E3BD79">变异位点</text>
+      <path d="M695 366 V380 H522 V387" fill="none" stroke="#E3BD79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M516 380 L522 387 L528 380" fill="none" stroke="#E3BD79" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
     </g>
-    <g id="gene-1">
-      <rect x="832" y="117" width="96" height="67" rx="6" fill="#e7b781" />
-      <text x="880.0" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#252a29" text-anchor="middle">KAN</text>
-    </g>
-    <g id="gene-2">
-      <rect x="974" y="117" width="111" height="67" rx="6" fill="#444a42" />
-      <text x="1029.5" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#f2f2e9" text-anchor="middle">ATTN</text>
-    </g>
-    <path d="M806 151 L825 151" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M816.5 156.2 L825 151 L816.5 145.8" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M950 151 L967 151" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M958.5 156.2 L967 151 L958.5 145.8" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M1097 201V240H716V278" fill="none" stroke="#959f8f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-    <text x="699" y="322" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="28" font-weight="500" fill="#f2f2e9" text-anchor="start">Train → evaluate → select</text>
-    <text x="699" y="371" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">SEARCH LOOP / SCHEMATIC</text>
   </g>
 </svg>

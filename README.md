@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/readme/hero.gif" width="100%" alt="Search hybrid PINN architectures with a genetic algorithm, then inspect the experiment records. Conceptual overview.">
+  <img src="./assets/readme/hero.gif" width="100%" alt="DNN、KAN 与 Attention 层组成架构基因；高亮变异位置，说明候选结构的搜索过程。">
 </p>
 
 # Auto-opt-PINN
