@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">Auto-opt-PINN</title>
+  <desc id="desc">Search hybrid PINN architectures with a genetic algorithm, then inspect the experiment records. The diagram is a conceptual illustration, not a benchmark or application screenshot.</desc>
+  <defs>
+    <clipPath id="frame">
+      <rect width="1200" height="440" rx="24" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#frame)">
+    <rect x="0" y="0" width="1200" height="440" rx="24" fill="#252a29" />
+    <text x="60" y="72" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">GENETIC ARCHITECTURE SEARCH</text>
+    <text x="60" y="166" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="76" font-weight="700" fill="#f2f2e9" text-anchor="start">Auto-opt</text>
+    <text x="60" y="246" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="76" font-weight="700" fill="#f2f2e9" text-anchor="start">PINN</text>
+    <text x="60" y="300" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="26" font-weight="400" fill="#f2f2e9" text-anchor="start">Explore the architecture.</text>
+    <text x="60" y="335" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="26" font-weight="400" fill="#f2f2e9" text-anchor="start">Keep the experiment trace.</text>
+    <text x="60" y="400" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">DNN + KAN + ATTENTION  /  BURGERS EQUATION</text>
+    <text x="690" y="72" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">MODEL GENES</text>
+    <g id="gene-0">
+      <rect x="690" y="117" width="96" height="67" rx="6" fill="#444a42" />
+      <text x="738.0" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#f2f2e9" text-anchor="middle">DNN</text>
+    </g>
+    <g id="gene-1">
+      <rect x="832" y="117" width="96" height="67" rx="6" fill="#e7b781" />
+      <text x="880.0" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#252a29" text-anchor="middle">KAN</text>
+    </g>
+    <g id="gene-2">
+      <rect x="974" y="117" width="111" height="67" rx="6" fill="#444a42" />
+      <text x="1029.5" y="160" font-family="'SFMono-Regular',Menlo,monospace" font-size="24" font-weight="650" fill="#f2f2e9" text-anchor="middle">ATTN</text>
+    </g>
+    <path d="M806 151 L825 151" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M816.5 156.2 L825 151 L816.5 145.8" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M950 151 L967 151" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M958.5 156.2 L967 151 L958.5 145.8" fill="none" stroke="#a2aa99" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M1097 201V240H716V278" fill="none" stroke="#959f8f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="699" y="322" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif" font-size="28" font-weight="500" fill="#f2f2e9" text-anchor="start">Train → evaluate → select</text>
+    <text x="699" y="371" font-family="'SFMono-Regular',Menlo,monospace" font-size="18" font-weight="600" fill="#e7b781" text-anchor="start">SEARCH LOOP / SCHEMATIC</text>
+  </g>
+</svg>
